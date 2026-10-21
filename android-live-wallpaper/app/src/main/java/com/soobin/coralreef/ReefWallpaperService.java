@@ -176,15 +176,15 @@ public class ReefWallpaperService extends WallpaperService {
         private void resetScene() {
             if (width <= 0 || height <= 0 || smallFish == null) return;
             swimmers.clear();
-            swimmers.add(make(whale, Kind.WHALE, .62f, .016f, .13f, .18f, false));
-            swimmers.add(make(shark, Kind.SHARK, .38f, .029f, .34f, .40f, true));
+            swimmers.add(make(whale, Kind.WHALE, .25f, .056f, .13f, .18f, false));
+            swimmers.add(make(shark, Kind.SHARK, .48f, .029f, .34f, .40f, true));
             swimmers.add(make(turtle, Kind.TURTLE, .29f, .021f, .72f, .82f, true));
             swimmers.add(make(jelly, Kind.JELLY, .20f, .012f, .52f, .66f, true));
             for (int index = swimmers.size(); index < configuredCount; index++) {
                 Bitmap fish = smallFish[random.nextInt(smallFish.length)];
                 float depth = .28f + random.nextFloat() * .68f;
                 // Match the larger web baseline while retaining depth variation.
-                float size = (.098f + random.nextFloat() * .110f) * (.72f + depth * .40f);
+                float size = (.132f + random.nextFloat() * .149f) * (.72f + depth * .40f);
                 float speed = .035f + random.nextFloat() * .047f;
                 swimmers.add(make(fish, Kind.FISH, size, speed, depth,
                     .18f + random.nextFloat() * .68f, random.nextBoolean()));
@@ -238,6 +238,10 @@ public class ReefWallpaperService extends WallpaperService {
 
         private void update(float dt) {
             for (Swimmer swimmer : swimmers) {
+                if (swimmer.kind == Kind.WHALE && swimmer.passCooldown > 0f) {
+                    swimmer.passCooldown = Math.max(0f, swimmer.passCooldown - dt);
+                    continue;
+                }
                 swimmer.phase += dt * swimmer.tailRate;
                 float personality = .82f + .25f * (float) Math.sin(swimmer.phase * .17f + swimmer.mood);
                 float boostFactor = 1f + swimmer.boost;
@@ -246,8 +250,14 @@ public class ReefWallpaperService extends WallpaperService {
                 swimmer.boost = Math.max(0f, swimmer.boost - dt * (swimmer.kind == Kind.WHALE ? .45f : .92f));
 
                 float fishWidth = width * swimmer.size;
-                if (swimmer.facingRight && swimmer.x > width + fishWidth) respawn(swimmer, false);
-                if (!swimmer.facingRight && swimmer.x < -fishWidth) respawn(swimmer, true);
+                if (swimmer.facingRight && swimmer.x > width + fishWidth) {
+                    respawn(swimmer, false);
+                    if (swimmer.kind == Kind.WHALE) swimmer.passCooldown = 4f;
+                }
+                if (!swimmer.facingRight && swimmer.x < -fishWidth) {
+                    respawn(swimmer, true);
+                    if (swimmer.kind == Kind.WHALE) swimmer.passCooldown = 4f;
+                }
             }
 
             for (int first = 0; first < swimmers.size(); first++) {
@@ -309,6 +319,7 @@ public class ReefWallpaperService extends WallpaperService {
         }
 
         private void drawSwimmer(Canvas canvas, Swimmer swimmer) {
+            if (swimmer.kind == Kind.WHALE && swimmer.passCooldown > 0f) return;
             Bitmap bitmap = swimmer.bitmap;
             if (bitmap == null) return;
             float drawWidth = width * swimmer.size;
@@ -415,6 +426,7 @@ public class ReefWallpaperService extends WallpaperService {
         float wave;
         float tailRate;
         float boost;
+        float passCooldown;
         boolean facingRight;
         boolean interactive;
 

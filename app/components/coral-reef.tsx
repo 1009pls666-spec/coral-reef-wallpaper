@@ -103,7 +103,11 @@ const DEFAULT_CCD_STRENGTH = 0.72;
 // Keep individual saved sizes intact while making every foreground animal
 // read clearly on first load. This also upgrades existing saved reefs because
 // the visual baseline is applied only at render time.
-const BASE_ANIMAL_VISUAL_SCALE = 0.76;
+const BASE_ANIMAL_VISUAL_SCALE = 1.03;
+const WHALE_SCREEN_WIDTH = 0.25;
+const WHALE_REFERENCE_SIZE = 0.288;
+const WHALE_REFERENCE_DEPTH_SCALE = 0.6472;
+const WHALE_PASS_GAP_SECONDS = 4;
 const STANDARD_FISH_MAX_SIZE = 0.35;
 const LARGE_SWIMMER_MAX_SIZE = STANDARD_FISH_MAX_SIZE * 5;
 const TAU = Math.PI * 2;
@@ -355,6 +359,7 @@ export function CoralReef() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [ccdEnabled, setCcdEnabled] = useState(true);
   const [ccdStrength, setCcdStrength] = useState(DEFAULT_CCD_STRENGTH);
+  const ccdActive = ccdEnabled && ccdStrength > 0.001;
   const [globalAnimalScale, setGlobalAnimalScale] = useState(1);
   const [addType, setAddType] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -510,10 +515,10 @@ export function CoralReef() {
     if (!engine) return;
     const lowPower = (navigator.hardwareConcurrency || 8) <= 4;
     const ccdCap = lowPower ? 0.78 : 1.02 - ccdStrength * 0.22;
-    const normalCap = lowPower ? 1.1 : 1.6;
-    engine.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, ccdEnabled ? ccdCap : normalCap));
+    const clearCap = 2;
+    engine.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, ccdActive ? ccdCap : clearCap));
     engine.renderer.setSize(engine.width, engine.height, false);
-  }, [ccdEnabled, ccdStrength, globalAnimalScale]);
+  }, [ccdActive, ccdEnabled, ccdStrength, globalAnimalScale]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -633,9 +638,11 @@ export function CoralReef() {
       engine.width = Math.max(1, rect.width);
       engine.height = Math.max(1, rect.height);
       const lowPower = (navigator.hardwareConcurrency || 8) <= 4;
-      const ccdCap = lowPower ? 0.78 : 1.02 - ccdStrengthRef.current * 0.22;
-      const normalCap = lowPower ? 1.1 : 1.6;
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, ccdEnabledRef.current ? ccdCap : normalCap));
+      const currentStrength = ccdStrengthRef.current;
+      const ccdCap = lowPower ? 0.78 : 1.02 - currentStrength * 0.22;
+      const clearCap = 2;
+      const currentCcdActive = ccdEnabledRef.current && currentStrength > 0.001;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, currentCcdActive ? ccdCap : clearCap));
       renderer.setSize(engine.width, engine.height, false);
       camera.left = 0; camera.right = engine.width; camera.top = engine.height; camera.bottom = 0;
       camera.updateProjectionMatrix();
@@ -664,6 +671,7 @@ export function CoralReef() {
         const runtime = runtimes.get(object.id);
         if (!runtime) continue;
         const asset = ASSETS[object.type];
+        const isAmbientWhale = asset.behavior === "whale" && object.id.includes("-default-");
         // Every unlocked animal is a through-swimmer, including animals added
         // by the user. They leave fully beyond the edge and re-enter from the
         // opposite off-screen side instead of turning against an invisible wall.
@@ -674,10 +682,13 @@ export function CoralReef() {
         // Large swimmers share the editor's size value without hidden caps.
         // Their asset-specific multipliers only compensate for transparent
         // padding in the source images, so every slider step remains visible.
-        const effectiveSize = asset.id === "reefShark" ? object.size * 0.82 : asset.behavior === "whale" ? object.size * 1.85 : object.size;
+        const effectiveSize = object.size;
         const nominal = minBase * effectiveSize * depthScale * (asset.kind === "animal" ? BASE_ANIMAL_VISUAL_SCALE * globalAnimalScaleRef.current : 1);
-        runtime.width = asset.kind === "animal" ? nominal : nominal * runtime.aspect;
+        runtime.width = isAmbientWhale
+          ? engine.width * WHALE_SCREEN_WIDTH * (object.size / WHALE_REFERENCE_SIZE) * (depthScale / WHALE_REFERENCE_DEPTH_SCALE) * globalAnimalScaleRef.current
+          : asset.kind === "animal" ? nominal : nominal * runtime.aspect;
         runtime.height = asset.kind === "animal" ? nominal / runtime.aspect : nominal;
+        if (isAmbientWhale) runtime.height = runtime.width / runtime.aspect;
         runtime.huntCooldown = Math.max(0, runtime.huntCooldown - dt);
 
         if (runtime.eatenTimer > 0) {
@@ -705,6 +716,20 @@ export function CoralReef() {
           runtime.mesh.visible = true;
         }
 
+        if (isAmbientWhale && runtime.respawnTimer > 0) {
+          if (!pausedRef.current) runtime.respawnTimer -= dt;
+          if (runtime.respawnTimer > 0) {
+            runtime.mesh.visible = false;
+            continue;
+          }
+          const offscreen = runtime.width * 0.7 + 44;
+          runtime.position.set(runtime.travelDir > 0 ? -offscreen : engine.width + offscreen, (0.14 + seeded(now * 0.00019 + runtime.phase, 167) * 0.52) * engine.height);
+          runtime.velocity.set(runtime.travelDir * engine.width / 18, 0);
+          runtime.target.set(runtime.travelDir > 0 ? 1.18 : -0.18, runtime.position.y / engine.height);
+          runtime.targetTimer = 8;
+          runtime.mesh.visible = true;
+        }
+
         if (moving) {
           const speedRange = asset.speedRange;
           const baseCruise = (speedRange[0] + (speedRange[1] - speedRange[0]) * (0.35 + object.depth * 0.42)) * minBase * object.speed;
@@ -726,7 +751,7 @@ export function CoralReef() {
             : (runtime.moodTarget > runtime.moodSpeed ? 0.7 : 0.46);
           runtime.moodSpeed += (runtime.moodTarget - runtime.moodSpeed) * (1 - Math.exp(-dt * moodEase));
           const personalityCruise = baseCruise * runtime.tempoScale * runtime.moodSpeed;
-          const cruise = asset.id === "reefShark" ? personalityCruise * 1.22 : asset.behavior === "whale" ? Math.max(personalityCruise * 1.4, minBase * 0.03 * object.speed * runtime.moodSpeed) : personalityCruise;
+          const cruise = asset.id === "reefShark" ? personalityCruise * 1.22 : isAmbientWhale ? Math.max(personalityCruise * 1.4, engine.width / 18) : asset.behavior === "whale" ? Math.max(personalityCruise * 1.4, minBase * 0.03 * object.speed * runtime.moodSpeed) : personalityCruise;
           let seekingFood = false;
 
           if (asset.behavior === "jellyfish") {
@@ -923,12 +948,18 @@ export function CoralReef() {
           if (routeSwimmer) {
             const offscreen = runtime.width * 0.7 + 44;
             if (runtime.travelDir > 0 && runtime.position.x > engine.width + offscreen) {
-              runtime.position.set(-offscreen, (0.1 + seeded(now * 0.00023 + runtime.phase, 81) * 0.68) * engine.height);
+              if (isAmbientWhale) {
+                runtime.respawnTimer = WHALE_PASS_GAP_SECONDS;
+                runtime.mesh.visible = false;
+              } else runtime.position.set(-offscreen, (0.1 + seeded(now * 0.00023 + runtime.phase, 81) * 0.68) * engine.height);
               runtime.velocity.x = Math.abs(runtime.velocity.x);
               runtime.target.set(1.18, clamp(runtime.position.y / engine.height + (seeded(now * 0.00029 + runtime.phase, 83) - 0.5) * 0.18, 0.1, 0.82));
               runtime.targetTimer = 4 + seeded(now * 0.00031 + runtime.phase, 85) * 4;
             } else if (runtime.travelDir < 0 && runtime.position.x < -offscreen) {
-              runtime.position.set(engine.width + offscreen, (0.1 + seeded(now * 0.00027 + runtime.phase, 87) * 0.68) * engine.height);
+              if (isAmbientWhale) {
+                runtime.respawnTimer = WHALE_PASS_GAP_SECONDS;
+                runtime.mesh.visible = false;
+              } else runtime.position.set(engine.width + offscreen, (0.1 + seeded(now * 0.00027 + runtime.phase, 87) * 0.68) * engine.height);
               runtime.velocity.x = -Math.abs(runtime.velocity.x);
               runtime.target.set(-0.18, clamp(runtime.position.y / engine.height + (seeded(now * 0.00033 + runtime.phase, 89) - 0.5) * 0.18, 0.1, 0.82));
               runtime.targetTimer = 4 + seeded(now * 0.00037 + runtime.phase, 91) * 4;
@@ -1137,7 +1168,9 @@ export function CoralReef() {
       id: `${type}-${crypto.randomUUID()}`,
       type,
       x: clamp(x, 0.03, 0.97), y: clamp(y, 0.06, 0.97),
-      size: (asset.sizeRange[0] + asset.sizeRange[1]) * 0.5,
+      size: type === "humpbackWhale"
+        ? (ASSETS.reefShark.sizeRange[0] + ASSETS.reefShark.sizeRange[1]) * 0.5
+        : (asset.sizeRange[0] + asset.sizeRange[1]) * 0.5,
       rotation: 0,
       depth: (asset.depthRange[0] + asset.depthRange[1]) * 0.5,
       speed: 1, range: asset.kind === "animal" ? 0.11 : 0,
@@ -1365,7 +1398,7 @@ export function CoralReef() {
 
       const output = document.createElement("canvas"); output.width = width; output.height = height;
       const context = output.getContext("2d", { willReadFrequently: true }); if (!context) throw new Error("canvas");
-      if (ccdEnabled) {
+      if (ccdActive) {
         const reduced = document.createElement("canvas");
         const downscale = 0.86 - ccdStrength * 0.18;
         reduced.width = Math.max(1, Math.round(width * downscale)); reduced.height = Math.max(1, Math.round(height * downscale));
@@ -1409,7 +1442,7 @@ export function CoralReef() {
         context.drawImage(raw, 0, 0);
       }
       const anchor = document.createElement("a"); anchor.href = output.toDataURL("image/png"); anchor.download = `나의-산호초-${new Date().toISOString().slice(0, 10)}.png`; anchor.click();
-      notify(`UI 없이 ${ccdEnabled ? "CCD 효과가 적용된 " : ""}바다 이미지를 저장했어요`);
+      notify(`UI 없이 ${ccdActive ? "CCD 효과가 적용된 " : "선명한 "}바다 이미지를 저장했어요`);
     } catch { notify("이미지 저장에 실패했어요"); }
   };
 
@@ -1426,25 +1459,25 @@ export function CoralReef() {
     addObject(type, (event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height);
   };
 
-  const chromaShift = ccdEnabled ? 0.18 + ccdStrength * 0.72 : 0;
-  const sharpenEdge = ccdEnabled ? 0.018 + ccdStrength * 0.024 : 0;
+  const chromaShift = ccdActive ? 0.18 + ccdStrength * 0.72 : 0;
+  const sharpenEdge = ccdActive ? 0.018 + ccdStrength * 0.024 : 0;
   const sharpenKernel = `0 ${-sharpenEdge} 0 ${-sharpenEdge} ${1 + sharpenEdge * 4} ${-sharpenEdge} 0 ${-sharpenEdge} 0`;
   const ccdStyle = {
-    "--ccd-softness": `${0.08 + ccdStrength * 0.2}px`,
-    "--ccd-brightness": `${1.01 + ccdStrength * 0.025}`,
-    "--ccd-contrast": `${1.012 + ccdStrength * 0.065}`,
-    "--ccd-saturation": `${1.035 + ccdStrength * 0.14}`,
-    "--ccd-noise-opacity": `${0.025 + ccdStrength * 0.045}`,
-    "--ccd-block-opacity": `${0.012 + ccdStrength * 0.022}`,
-    "--ccd-bloom-opacity": `${0.46 + ccdStrength * 0.32}`,
-    "--ccd-vignette-opacity": `${0.46 + ccdStrength * 0.38}`,
+    "--ccd-softness": ccdActive ? `${0.08 + ccdStrength * 0.2}px` : "0px",
+    "--ccd-brightness": ccdActive ? `${1.01 + ccdStrength * 0.025}` : "1",
+    "--ccd-contrast": ccdActive ? `${1.012 + ccdStrength * 0.065}` : "1",
+    "--ccd-saturation": ccdActive ? `${1.035 + ccdStrength * 0.14}` : "1",
+    "--ccd-noise-opacity": ccdActive ? `${0.025 + ccdStrength * 0.045}` : "0",
+    "--ccd-block-opacity": ccdActive ? `${0.012 + ccdStrength * 0.022}` : "0",
+    "--ccd-bloom-opacity": ccdActive ? `${0.46 + ccdStrength * 0.32}` : "0",
+    "--ccd-vignette-opacity": ccdActive ? `${0.46 + ccdStrength * 0.38}` : "0",
   } as CSSProperties;
   const selectedVisualScale = selected && ASSETS[selected.type].kind === "animal"
-    ? BASE_ANIMAL_VISUAL_SCALE * globalAnimalScale * (selected.type === "reefShark" ? 0.82 : ASSETS[selected.type].behavior === "whale" ? 1.85 : 1)
+    ? BASE_ANIMAL_VISUAL_SCALE * globalAnimalScale
     : 1;
 
   return (
-    <main ref={rootRef} style={ccdStyle} className={`coral-reef${editMode ? " is-editing" : ""}${paused ? " is-paused" : ""}${uiHidden ? " is-ui-hidden" : ""}${ccdEnabled ? " is-ccd" : ""}`} onDragOver={(event) => event.preventDefault()} onDrop={onDrop}>
+    <main ref={rootRef} style={ccdStyle} className={`coral-reef${editMode ? " is-editing" : ""}${paused ? " is-paused" : ""}${uiHidden ? " is-ui-hidden" : ""}${ccdActive ? " is-ccd" : ""}`} onDragOver={(event) => event.preventDefault()} onDrop={onDrop}>
       <svg className="reef-filter-defs" width="0" height="0" aria-hidden="true" focusable="false">
         <defs>
           <filter id="reef-ccd-filter" x="-2%" y="-2%" width="104%" height="104%" colorInterpolationFilters="sRGB">
