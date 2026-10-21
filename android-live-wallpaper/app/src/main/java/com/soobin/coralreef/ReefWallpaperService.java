@@ -183,7 +183,8 @@ public class ReefWallpaperService extends WallpaperService {
             for (int index = swimmers.size(); index < configuredCount; index++) {
                 Bitmap fish = smallFish[random.nextInt(smallFish.length)];
                 float depth = .28f + random.nextFloat() * .68f;
-                float size = (.075f + random.nextFloat() * .085f) * (.72f + depth * .40f);
+                // Match the larger web baseline while retaining depth variation.
+                float size = (.098f + random.nextFloat() * .110f) * (.72f + depth * .40f);
                 float speed = .035f + random.nextFloat() * .047f;
                 swimmers.add(make(fish, Kind.FISH, size, speed, depth,
                     .18f + random.nextFloat() * .68f, random.nextBoolean()));

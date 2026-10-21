@@ -100,7 +100,10 @@ const DISTANT_FISH_TYPES = ["silverTang", "butterflyfish", "bannerfish", "yellow
 const STORAGE_KEY = "photo-reef:v1";
 const CCD_STORAGE_KEY = "photo-reef:ccd:v1";
 const DEFAULT_CCD_STRENGTH = 0.72;
-const BASE_ANIMAL_VISUAL_SCALE = 0.585;
+// Keep individual saved sizes intact while making every foreground animal
+// read clearly on first load. This also upgrades existing saved reefs because
+// the visual baseline is applied only at render time.
+const BASE_ANIMAL_VISUAL_SCALE = 0.76;
 const STANDARD_FISH_MAX_SIZE = 0.35;
 const LARGE_SWIMMER_MAX_SIZE = STANDARD_FISH_MAX_SIZE * 5;
 const TAU = Math.PI * 2;
