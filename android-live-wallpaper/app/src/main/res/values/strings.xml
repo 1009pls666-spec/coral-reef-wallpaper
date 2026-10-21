@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">나의 산호초 바다</string>
+    <string name="wallpaper_description">물고기와 고래가 천천히 헤엄치는 인터랙티브 산호초 라이브 배경화면</string>
+    <string name="set_wallpaper">움직이는 배경화면으로 설정</string>
+    <string name="open_editor">전체 바다 편집기 열기</string>
+    <string name="speed_label">유영 속도</string>
+    <string name="count_label">물고기 수</string>
+</resources>
