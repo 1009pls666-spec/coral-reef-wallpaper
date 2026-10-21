@@ -106,9 +106,10 @@ const AMBIENT_WHALE_ID = "humpbackWhale-default-ambient";
 // read clearly on first load. This also upgrades existing saved reefs because
 // the visual baseline is applied only at render time.
 const BASE_ANIMAL_VISUAL_SCALE = 1.03;
-// The ambient whale is a rare, cinematic pass: it fills roughly half of the
-// viewport while keeping user-added whales at their normal editable size.
-const WHALE_SCREEN_WIDTH = 0.7;
+// The source whale is unusually wide and shallow. Let the ambient pass span
+// almost the whole viewport so its visible body also feels genuinely huge,
+// while keeping user-added whales at their normal editable size.
+const WHALE_SCREEN_WIDTH = 0.95;
 // A full pass takes about 31 seconds. Hiding it for another 58 seconds keeps
 // the start-to-start cadence close to 90 seconds across viewport sizes.
 const WHALE_PASS_GAP_SECONDS = 58;
@@ -257,14 +258,14 @@ function defaultReef(): ReefObject[] {
     return {
       id: type === "humpbackWhale" ? AMBIENT_WHALE_ID : `${type}-default-${index}`,
       type,
-      x: type === "reefShark" ? 0.69 : type === "humpbackWhale" ? 0.12 : 0.08 + seeded(index, 3) * 0.84,
+      x: type === "reefShark" ? 0.69 : type === "humpbackWhale" ? 0.2 : 0.08 + seeded(index, 3) * 0.84,
       y: type === "reefShark" ? 0.34 : type === "humpbackWhale" ? 0.2 : 0.17 + seeded(index, 5) * 0.58,
       size,
       rotation: (seeded(index, 9) - 0.5) * 7,
       depth,
       speed: 0.8 + seeded(index, 11) * 0.42,
       range: 0.07 + seeded(index, 13) * 0.12,
-      flipped: seeded(index, 15) > 0.52,
+      flipped: type === "humpbackWhale" ? false : seeded(index, 15) > 0.52,
       locked: false,
       phase: seeded(index, 17) * TAU,
     };
@@ -1064,7 +1065,7 @@ export function CoralReef() {
               shark.targetTimer = Math.max(shark.targetTimer, 2.4);
               const bloom: BloodBloom = { id: crypto.randomUUID(), x: fish.position.x / engine.width, y: fish.position.y / engine.height, seed: Math.random() * 100 };
               setBloodBlooms((blooms) => [...blooms, bloom]);
-              window.setTimeout(() => setBloodBlooms((blooms) => blooms.filter((item) => item.id !== bloom.id)), 5100);
+              window.setTimeout(() => setBloodBlooms((blooms) => blooms.filter((item) => item.id !== bloom.id)), 4200);
               break;
             }
           }
@@ -1540,9 +1541,9 @@ export function CoralReef() {
           return <svg key={bloom.id} className="reef-blood-plume" viewBox="0 0 140 180" style={{
             "--x": `${bloom.x * 100}%`,
             "--y": `${bloom.y * 100}%`,
-            "--plume-size": `${96 + seeded(bloom.seed, 149) * 36}px`,
-            "--drift": `${(seeded(bloom.seed, 151) - 0.5) * 54}px`,
-            "--tilt": `${(seeded(bloom.seed, 157) - 0.5) * 8}deg`,
+            "--plume-size": `${44 + seeded(bloom.seed, 149) * 10}px`,
+            "--drift": `${(seeded(bloom.seed, 151) - 0.5) * 14}px`,
+            "--tilt": `${(seeded(bloom.seed, 157) - 0.5) * 4}deg`,
           } as CSSProperties}>
             <defs>
               <linearGradient id={gradientId} x1="0" y1="1" x2="0" y2="0">
@@ -1556,21 +1557,7 @@ export function CoralReef() {
                 <feGaussianBlur stdDeviation=".28" />
               </filter>
             </defs>
-            <g className="plume-body" filter={`url(#${filterId})`} style={{ fill: `url(#${gradientId})` }}>
-              <path className="plume-wisp wisp-core" d="M67 176 C54 160 80 147 67 128 C54 109 76 96 64 77 C54 61 66 48 57 32 C51 21 55 12 52 4 L63 4 C66 17 62 25 69 37 C78 52 69 66 79 82 C90 99 71 113 83 131 C95 149 75 164 77 176 Z" />
-              <path className="plume-wisp wisp-left" d="M64 171 C48 158 58 142 45 129 C32 116 46 101 35 87 C25 74 34 62 25 51 C18 42 16 31 22 20 C31 31 34 43 41 52 C51 65 42 77 52 90 C64 105 49 118 60 132 C72 147 58 158 70 171 Z" />
-              <path className="plume-wisp wisp-right" d="M74 172 C88 159 79 144 93 131 C107 118 94 103 106 89 C118 75 110 63 121 52 C130 43 133 31 127 21 C118 32 115 43 108 53 C98 66 107 79 97 92 C86 107 101 119 90 134 C79 149 92 160 80 172 Z" />
-              <path className="plume-wisp wisp-curl" d="M66 158 C54 147 69 136 59 123 C49 111 56 99 47 91 C39 84 27 91 22 81 C18 72 27 63 38 67 C48 71 48 82 57 87 C68 94 63 107 72 119 C82 133 68 145 77 156 Z" />
-              <path className="plume-billow billow-low" d="M54 151 C48 143 53 134 63 132 C72 128 83 132 87 140 C92 149 85 158 75 160 C65 164 58 159 54 151 Z" />
-              <path className="plume-billow billow-mid" d="M34 106 C29 99 33 90 42 87 C51 83 61 87 64 95 C68 103 62 111 54 114 C46 117 38 113 34 106 Z" />
-              <path className="plume-billow billow-high" d="M91 76 C86 68 91 60 101 57 C111 54 120 59 122 67 C125 75 119 82 110 85 C101 88 95 84 91 76 Z" />
-            </g>
-            <g className="plume-droplets" style={{ fill: `url(#${gradientId})` }}>
-              <ellipse className="plume-drop drop-one" cx="66" cy="164" rx="8.5" ry="5" />
-              <ellipse className="plume-drop drop-two" cx="46" cy="126" rx="5.2" ry="3.4" />
-              <ellipse className="plume-drop drop-three" cx="96" cy="102" rx="4.6" ry="3" />
-              <ellipse className="plume-drop drop-four" cx="59" cy="66" rx="3.8" ry="2.6" />
-            </g>
+            <path className="plume-single-wisp" filter={`url(#${filterId})`} style={{ fill: `url(#${gradientId})` }} d="M68 176 C63 160 74 147 67 130 C60 113 72 99 65 83 C59 68 69 55 63 42 C58 30 65 19 61 7 L67 6 C72 20 66 32 72 44 C79 58 69 70 75 84 C83 101 71 114 78 131 C86 149 73 161 75 176 Z" />
           </svg>;
         })}
       </div>
