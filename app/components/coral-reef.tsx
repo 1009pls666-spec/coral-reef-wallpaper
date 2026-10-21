@@ -190,6 +190,7 @@ const FISH_FRAGMENT = `
   uniform vec3 uTint;
   uniform float uOpacity;
   uniform float uPlant;
+  uniform float uViewportFeather;
   uniform float uDepth;
   uniform vec2 uResolution;
   void main() {
@@ -197,7 +198,7 @@ const FISH_FRAGMENT = `
     if (texel.a < 0.025) discard;
     vec3 color = texel.rgb * uTint;
     float viewportFeather = 1.0;
-    if (uPlant < 0.5 && uResolution.x > 1.0) {
+    if (uPlant < 0.5 && uViewportFeather > 0.5 && uResolution.x > 1.0) {
       vec2 screenUv = gl_FragCoord.xy / uResolution;
       float fadeX = smoothstep(0.0, 0.024, screenUv.x) * smoothstep(0.0, 0.024, 1.0 - screenUv.x);
       float fadeY = smoothstep(0.0, 0.02, screenUv.y) * smoothstep(0.0, 0.02, 1.0 - screenUv.y);
@@ -346,6 +347,7 @@ function createMaterial(texture: THREE.Texture, asset: ReefAsset, phase: number)
       uBehavior: { value: asset.id === "reefShark" ? 4 : asset.behavior === "whale" ? 5 : asset.behavior === "turtle" ? 2 : asset.behavior === "jellyfish" ? 3 : 0 },
       uTint: { value: new THREE.Color(1, 1, 1) },
       uOpacity: { value: 1 },
+      uViewportFeather: { value: 1 },
       uDepth: { value: 1 },
       uResolution: { value: new THREE.Vector2(1, 1) },
     },
@@ -993,7 +995,7 @@ export function CoralReef() {
         material.uniforms.uFreq.value = (asset.id === "reefShark" ? 4.4 + fleeBoost * 1.55 : asset.behavior === "whale" ? 1.12 + fleeBoost * 0.42 : asset.behavior === "turtle" ? 1.55 : asset.behavior === "jellyfish" ? 2.05 + fleeBoost * 0.65 : 2.1 + visualSpeed * 42 + fleeBoost * 3.2) * runtime.swimRate;
         material.uniforms.uTint.value.setRGB(0.66 + object.depth * 0.34, 0.82 + object.depth * 0.18, 1);
         let sceneOpacity = 1;
-        if (asset.kind === "animal") {
+        if (asset.kind === "animal" && !isAmbientWhale) {
           // Do not expose a hard rectangular cut when a swimmer enters or exits
           // through open water. Fade the whole animal over the outer slice of
           // its own body instead of discarding pixels with an approximate reef.
@@ -1007,6 +1009,7 @@ export function CoralReef() {
           sceneOpacity = sceneOpacity * sceneOpacity * (3 - 2 * sceneOpacity);
         }
         material.uniforms.uOpacity.value = sceneOpacity;
+        material.uniforms.uViewportFeather.value = isAmbientWhale ? 0 : 1;
         material.uniforms.uDepth.value = object.depth;
         material.uniforms.uResolution.value.copy(drawingBufferSize);
         // Keep saved/pointer coordinates in screen space (top = 0), but render in
