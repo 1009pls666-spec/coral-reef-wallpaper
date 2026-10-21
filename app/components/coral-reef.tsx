@@ -101,15 +101,14 @@ const CCD_STORAGE_KEY = "photo-reef:ccd:v1";
 const DEFAULT_CCD_STRENGTH = 0.72;
 const WINDOWS_WALLPAPER_DOWNLOAD_URL = "https://github.com/1009pls666-spec/coral-reef-wallpaper-downloads/releases/download/v0.1.0/coral-reef-wallpaper-0.1.0-win-x64-portable.zip";
 const MAC_WALLPAPER_DOWNLOAD_URL = "https://github.com/1009pls666-spec/coral-reef-wallpaper-downloads/releases/download/v0.1.0/coral-reef-wallpaper-0.1.0-mac-arm64.dmg";
+const AMBIENT_WHALE_ID = "humpbackWhale-default-ambient";
 // Keep individual saved sizes intact while making every foreground animal
 // read clearly on first load. This also upgrades existing saved reefs because
 // the visual baseline is applied only at render time.
 const BASE_ANIMAL_VISUAL_SCALE = 1.03;
 // The ambient whale is a rare, cinematic pass: it fills roughly half of the
 // viewport while keeping user-added whales at their normal editable size.
-const WHALE_SCREEN_WIDTH = 0.52;
-const WHALE_REFERENCE_SIZE = 0.288;
-const WHALE_REFERENCE_DEPTH_SCALE = 0.6472;
+const WHALE_SCREEN_WIDTH = 0.7;
 // A full pass takes about 31 seconds. Hiding it for another 58 seconds keeps
 // the start-to-start cadence close to 90 seconds across viewport sizes.
 const WHALE_PASS_GAP_SECONDS = 58;
@@ -256,9 +255,9 @@ function defaultReef(): ReefObject[] {
     const sizeMix = seeded(index, 7);
     const size = asset.sizeRange[0] + sizeMix * (asset.sizeRange[1] - asset.sizeRange[0]);
     return {
-      id: `${type}-default-${index}`,
+      id: type === "humpbackWhale" ? AMBIENT_WHALE_ID : `${type}-default-${index}`,
       type,
-      x: type === "reefShark" ? 0.69 : type === "humpbackWhale" ? 0.76 : 0.08 + seeded(index, 3) * 0.84,
+      x: type === "reefShark" ? 0.69 : type === "humpbackWhale" ? 0.12 : 0.08 + seeded(index, 3) * 0.84,
       y: type === "reefShark" ? 0.34 : type === "humpbackWhale" ? 0.2 : 0.17 + seeded(index, 5) * 0.58,
       size,
       rotation: (seeded(index, 9) - 0.5) * 7,
@@ -487,8 +486,11 @@ export function CoralReef() {
       const restored = raw ? validateImport(JSON.parse(raw)) : null;
       if (restored) {
         const trimmed = trimDefaultPopulation(restored);
-        const whale = defaultReef().find((object) => object.type === "humpbackWhale");
-        setObjects(trimmed.some((object) => object.type === "humpbackWhale") || !whale ? trimmed : [...trimmed, whale]);
+        const ambientWhale = defaultReef().find((object) => object.id === AMBIENT_WHALE_ID);
+        const withoutAmbientWhales = trimmed.filter((object) => (
+          object.type !== "humpbackWhale" || !object.id.includes("-default-")
+        ));
+        setObjects(ambientWhale ? [...withoutAmbientWhales, ambientWhale] : withoutAmbientWhales);
       }
       if (!localStorage.getItem(`${STORAGE_KEY}:hint`)) {
         setHint(true);
@@ -681,7 +683,7 @@ export function CoralReef() {
         const runtime = runtimes.get(object.id);
         if (!runtime) continue;
         const asset = ASSETS[object.type];
-        const isAmbientWhale = asset.behavior === "whale" && object.id.includes("-default-");
+        const isAmbientWhale = object.id === AMBIENT_WHALE_ID;
         // Every unlocked animal is a through-swimmer, including animals added
         // by the user. They leave fully beyond the edge and re-enter from the
         // opposite off-screen side instead of turning against an invisible wall.
@@ -695,7 +697,7 @@ export function CoralReef() {
         const effectiveSize = object.size;
         const nominal = minBase * effectiveSize * depthScale * (asset.kind === "animal" ? BASE_ANIMAL_VISUAL_SCALE * globalAnimalScaleRef.current : 1);
         runtime.width = isAmbientWhale
-          ? engine.width * WHALE_SCREEN_WIDTH * (object.size / WHALE_REFERENCE_SIZE) * (depthScale / WHALE_REFERENCE_DEPTH_SCALE) * globalAnimalScaleRef.current
+          ? engine.width * WHALE_SCREEN_WIDTH * globalAnimalScaleRef.current
           : asset.kind === "animal" ? nominal : nominal * runtime.aspect;
         runtime.height = asset.kind === "animal" ? nominal / runtime.aspect : nominal;
         if (isAmbientWhale) runtime.height = runtime.width / runtime.aspect;
@@ -1062,7 +1064,7 @@ export function CoralReef() {
               shark.targetTimer = Math.max(shark.targetTimer, 2.4);
               const bloom: BloodBloom = { id: crypto.randomUUID(), x: fish.position.x / engine.width, y: fish.position.y / engine.height, seed: Math.random() * 100 };
               setBloodBlooms((blooms) => [...blooms, bloom]);
-              window.setTimeout(() => setBloodBlooms((blooms) => blooms.filter((item) => item.id !== bloom.id)), 3800);
+              window.setTimeout(() => setBloodBlooms((blooms) => blooms.filter((item) => item.id !== bloom.id)), 5100);
               break;
             }
           }
@@ -1554,22 +1556,20 @@ export function CoralReef() {
                 <feGaussianBlur stdDeviation=".28" />
               </filter>
             </defs>
-            <g className="plume-currents" filter={`url(#${filterId})`} style={{ stroke: `url(#${gradientId})` }}>
-              <path className="plume-veil veil-left" style={{ fill: `url(#${gradientId})` }} d="M70 174 C61 153 66 137 53 121 C40 105 48 89 35 75 C24 64 17 50 21 34 C30 46 45 51 46 68 C47 84 59 94 57 110 C55 128 68 143 70 174 Z" />
-              <path className="plume-veil veil-right" style={{ fill: `url(#${gradientId})` }} d="M70 174 C79 153 73 136 87 121 C101 106 93 89 106 76 C118 64 125 51 121 35 C112 47 96 52 95 69 C94 85 82 94 84 111 C86 128 72 145 70 174 Z" />
-              <path className="plume-current core" pathLength="1" d="M70 174 C63 157 79 146 69 130 C58 112 76 101 67 84 C57 67 68 53 60 36 C54 24 59 14 56 5" />
-              <path className="plume-current inner-left" pathLength="1" d="M67 171 C51 158 61 141 48 128 C35 115 50 98 38 84 C27 70 36 57 27 45 C20 35 18 25 23 16" />
-              <path className="plume-current inner-right" pathLength="1" d="M74 172 C88 158 78 143 92 130 C106 117 92 101 104 87 C116 73 108 60 119 49 C128 40 132 29 126 20" />
-              <path className="plume-current outer-left" pathLength="1" d="M65 167 C53 153 45 143 47 132 C50 119 29 112 25 99 C21 86 35 79 27 67 C20 57 9 53 8 40" />
-              <path className="plume-current outer-right" pathLength="1" d="M76 168 C87 154 96 146 93 134 C89 120 112 115 116 101 C120 87 105 80 114 67 C121 57 133 53 134 39" />
-              <path className="plume-current curl-left" pathLength="1" d="M69 160 C57 147 72 135 61 122 C50 109 57 97 47 89 C37 81 24 89 19 78 C15 68 25 59 36 63" />
-              <path className="plume-current curl-right" pathLength="1" d="M72 158 C84 145 68 132 80 120 C91 109 84 96 95 88 C105 80 118 88 123 76 C127 66 116 57 105 62" />
-              <path className="plume-current hair" pathLength="1" d="M71 165 C78 149 65 139 75 124 C84 110 73 98 80 84 C87 71 81 57 89 43" />
+            <g className="plume-body" filter={`url(#${filterId})`} style={{ fill: `url(#${gradientId})` }}>
+              <path className="plume-wisp wisp-core" d="M67 176 C54 160 80 147 67 128 C54 109 76 96 64 77 C54 61 66 48 57 32 C51 21 55 12 52 4 L63 4 C66 17 62 25 69 37 C78 52 69 66 79 82 C90 99 71 113 83 131 C95 149 75 164 77 176 Z" />
+              <path className="plume-wisp wisp-left" d="M64 171 C48 158 58 142 45 129 C32 116 46 101 35 87 C25 74 34 62 25 51 C18 42 16 31 22 20 C31 31 34 43 41 52 C51 65 42 77 52 90 C64 105 49 118 60 132 C72 147 58 158 70 171 Z" />
+              <path className="plume-wisp wisp-right" d="M74 172 C88 159 79 144 93 131 C107 118 94 103 106 89 C118 75 110 63 121 52 C130 43 133 31 127 21 C118 32 115 43 108 53 C98 66 107 79 97 92 C86 107 101 119 90 134 C79 149 92 160 80 172 Z" />
+              <path className="plume-wisp wisp-curl" d="M66 158 C54 147 69 136 59 123 C49 111 56 99 47 91 C39 84 27 91 22 81 C18 72 27 63 38 67 C48 71 48 82 57 87 C68 94 63 107 72 119 C82 133 68 145 77 156 Z" />
+              <path className="plume-billow billow-low" d="M54 151 C48 143 53 134 63 132 C72 128 83 132 87 140 C92 149 85 158 75 160 C65 164 58 159 54 151 Z" />
+              <path className="plume-billow billow-mid" d="M34 106 C29 99 33 90 42 87 C51 83 61 87 64 95 C68 103 62 111 54 114 C46 117 38 113 34 106 Z" />
+              <path className="plume-billow billow-high" d="M91 76 C86 68 91 60 101 57 C111 54 120 59 122 67 C125 75 119 82 110 85 C101 88 95 84 91 76 Z" />
             </g>
-            <g className="plume-seeds">
-              <ellipse className="plume-seed seed-one" cx="67" cy="162" rx="7" ry="3.6" />
-              <ellipse className="plume-seed seed-two" cx="49" cy="129" rx="3.8" ry="2.2" />
-              <ellipse className="plume-seed seed-three" cx="95" cy="105" rx="3" ry="1.8" />
+            <g className="plume-droplets" style={{ fill: `url(#${gradientId})` }}>
+              <ellipse className="plume-drop drop-one" cx="66" cy="164" rx="8.5" ry="5" />
+              <ellipse className="plume-drop drop-two" cx="46" cy="126" rx="5.2" ry="3.4" />
+              <ellipse className="plume-drop drop-three" cx="96" cy="102" rx="4.6" ry="3" />
+              <ellipse className="plume-drop drop-four" cx="59" cy="66" rx="3.8" ry="2.6" />
             </g>
           </svg>;
         })}

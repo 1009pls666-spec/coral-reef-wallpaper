@@ -74,27 +74,25 @@
 @keyframes reef-food-fall { 0% { opacity: 0; transform: translate3d(0,-5px,0) rotate(0deg) scale(.65); } 8% { opacity: .96; } 72% { opacity: .76; } 100% { opacity: 0; transform: translate3d(var(--dx),var(--dy),0) rotate(210deg) scale(.42); } }
 
 .reef-blood-cloud { z-index: 71; }
-.reef-blood-plume { position: absolute; left: var(--x); top: var(--y); width: var(--plume-size); height: calc(var(--plume-size) * 1.3); overflow: visible; transform-origin: 50% 96%; filter: saturate(1.12); mix-blend-mode: multiply; animation: reef-pigment-drift 3.65s cubic-bezier(.2,.58,.28,1) both; }
-.reef-blood-plume .plume-currents { transform-box: fill-box; transform-origin: 50% 100%; animation: reef-pigment-spread 3.55s cubic-bezier(.2,.5,.24,1) both; }
-.reef-blood-plume .plume-veil { stroke: none; transform-box: fill-box; transform-origin: 50% 100%; animation: reef-pigment-veil 3.45s cubic-bezier(.18,.52,.23,1) both; }
-.reef-blood-plume .plume-veil.veil-right { animation-delay: .11s; }
-.reef-blood-plume .plume-current { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 0 1; stroke-dashoffset: 0; transform-box: fill-box; transform-origin: 50% 100%; animation: reef-pigment-current 3.35s cubic-bezier(.22,.48,.24,1) both; }
-.reef-blood-plume .plume-current.core { stroke-width: 4.2; }
-.reef-blood-plume .plume-current.inner-left { stroke-width: 2.8; animation-delay: .07s; }
-.reef-blood-plume .plume-current.inner-right { stroke-width: 2.45; animation-delay: .12s; }
-.reef-blood-plume .plume-current.outer-left { stroke-width: 1.15; animation-delay: .2s; }
-.reef-blood-plume .plume-current.outer-right { stroke-width: 1.05; animation-delay: .25s; }
-.reef-blood-plume .plume-current.curl-left { stroke-width: 1.4; animation-delay: .31s; }
-.reef-blood-plume .plume-current.curl-right { stroke-width: 1.2; animation-delay: .36s; }
-.reef-blood-plume .plume-current.hair { stroke-width: .72; opacity: .52; animation-delay: .43s; }
-.reef-blood-plume .plume-seed { fill: rgba(112,27,42,.58); transform-box: fill-box; transform-origin: center; animation: reef-pigment-seed 1.55s ease-out both; }
-.reef-blood-plume .seed-two { opacity: .55; animation-delay: .09s; }
-.reef-blood-plume .seed-three { opacity: .42; animation-delay: .18s; }
-@keyframes reef-pigment-current { 0% { opacity: 0; stroke-dasharray: .015 .985; stroke-dashoffset: 0; } 8% { opacity: .96; stroke-dasharray: .16 .84; stroke-dashoffset: 0; } 28% { opacity: .86; stroke-dasharray: .28 .72; stroke-dashoffset: -.16; } 52% { opacity: .6; stroke-dasharray: .32 .68; stroke-dashoffset: -.39; } 74% { opacity: .34; stroke-dasharray: .24 .76; stroke-dashoffset: -.66; } 91% { opacity: .12; stroke-dasharray: .1 .9; stroke-dashoffset: -.86; } 100% { opacity: 0; stroke-dasharray: 0 1; stroke-dashoffset: -1; } }
-@keyframes reef-pigment-veil { 0% { opacity: 0; transform: scaleX(.18) translateY(7px); } 14% { opacity: .52; } 42% { opacity: .42; transform: scaleX(.78) translateY(0); } 72% { opacity: .22; transform: scaleX(1.08) translateY(-4px); } 100% { opacity: 0; transform: scaleX(1.38) translateY(-10px); } }
-@keyframes reef-pigment-spread { 0% { transform: scaleX(.34) translateY(5px); } 32% { transform: scaleX(.68) translateY(0); } 68% { transform: scaleX(1.08) translateY(-3px); } 100% { transform: scaleX(1.34) translateY(-6px); } }
-@keyframes reef-pigment-seed { 0% { opacity: 0; transform: translateY(7px) scale(.2); } 16% { opacity: .62; transform: translateY(0) scale(.86); } 48% { opacity: .32; } 100% { opacity: 0; transform: translateY(-48px) translateX(9px) scale(.38); } }
-@keyframes reef-pigment-drift { 0% { transform: translate3d(-50%,-86%,0) rotate(0deg); } 45% { transform: translate3d(-50%,-90%,0) rotate(0deg); } 100% { transform: translate3d(calc(-50% + var(--drift)),-96%,0) rotate(var(--tilt)); } }
+.reef-blood-plume { position: absolute; left: var(--x); top: var(--y); width: var(--plume-size); height: calc(var(--plume-size) * 1.3); overflow: visible; transform-origin: 50% 96%; filter: saturate(1.08); mix-blend-mode: multiply; animation: reef-pigment-drift 4.8s cubic-bezier(.18,.48,.2,1) both; }
+.reef-blood-plume .plume-body { transform-box: fill-box; transform-origin: 50% 100%; }
+.reef-blood-plume .plume-wisp { transform-box: fill-box; transform-origin: 50% 100%; animation: reef-pigment-wisp 4.45s cubic-bezier(.18,.45,.22,1) both; }
+.reef-blood-plume .wisp-core { opacity: .84; }
+.reef-blood-plume .wisp-left { opacity: .55; animation-delay: .1s; }
+.reef-blood-plume .wisp-right { opacity: .48; animation-delay: .18s; }
+.reef-blood-plume .wisp-curl { opacity: .38; animation-delay: .3s; }
+.reef-blood-plume .plume-billow { transform-box: fill-box; transform-origin: center; opacity: .38; animation: reef-pigment-billow 3.9s cubic-bezier(.18,.42,.2,1) both; }
+.reef-blood-plume .billow-low { animation-delay: .18s; }
+.reef-blood-plume .billow-mid { animation-delay: .46s; }
+.reef-blood-plume .billow-high { animation-delay: .72s; }
+.reef-blood-plume .plume-drop { transform-box: fill-box; transform-origin: center; opacity: .56; animation: reef-pigment-drop 3.25s ease-out both; }
+.reef-blood-plume .drop-two { animation-delay: .18s; }
+.reef-blood-plume .drop-three { animation-delay: .37s; }
+.reef-blood-plume .drop-four { animation-delay: .58s; }
+@keyframes reef-pigment-wisp { 0% { opacity: 0; transform: translateY(18px) scale(.28,.08); } 11% { opacity: .8; transform: translateY(4px) scale(.62,.34); } 38% { opacity: .66; transform: translateY(-7px) scale(.9,.72); } 70% { opacity: .34; transform: translateY(-22px) scale(1.18,.98); } 100% { opacity: 0; transform: translateY(-54px) scale(1.48,1.12); } }
+@keyframes reef-pigment-billow { 0% { opacity: 0; transform: translateY(10px) scale(.2); } 18% { opacity: .42; transform: translateY(0) scale(.72); } 58% { opacity: .23; transform: translateY(-18px) scale(1.22,.9); } 100% { opacity: 0; transform: translateY(-48px) translateX(8px) scale(1.8,1.18); } }
+@keyframes reef-pigment-drop { 0% { opacity: 0; transform: translateY(8px) scale(.18); } 16% { opacity: .58; transform: translateY(0) scale(.9); } 52% { opacity: .3; } 100% { opacity: 0; transform: translateY(-42px) translateX(7px) scale(.5); } }
+@keyframes reef-pigment-drift { 0% { opacity: 0; transform: translate3d(-50%,-82%,0) rotate(0deg) scale(.86,.72); } 8% { opacity: 1; } 64% { opacity: .82; } 100% { opacity: 0; transform: translate3d(calc(-50% + var(--drift)),-126%,0) rotate(var(--tilt)) scale(1.08,1.12); } }
 
 .reef-toolbar { position: absolute; z-index: 100; top: max(14px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); display: flex; gap: 2px; padding: 4px; border: 1px solid var(--line); border-radius: 999px; background: rgba(4, 34, 49, .42); box-shadow: 0 8px 28px rgba(0, 24, 44, .18), inset 0 1px rgba(255,255,255,.08); backdrop-filter: blur(16px) saturate(1.12); }
 .reef-tool { position: relative; width: 38px; height: 38px; min-width: 38px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; color: rgba(236,250,253,.8); background: transparent; cursor: pointer; transition: background .18s, color .18s, transform .18s; }
