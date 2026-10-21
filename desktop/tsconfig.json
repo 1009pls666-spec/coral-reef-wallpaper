@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "types": ["node", "vite/client"]
+  },
+  "include": [
+    "./entry.tsx",
+    "./vite.config.ts",
+    "../app/components/coral-reef.tsx"
+  ],
+  "exclude": ["../node_modules"]
+}

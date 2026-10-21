@@ -1,0 +1,42 @@
+{
+  "appId": "com.soobinpark.mycoralreef",
+  "productName": "Coral Reef Wallpaper",
+  "executableName": "CoralReefWallpaper",
+  "artifactName": "coral-reef-wallpaper-${version}-${os}-${arch}.${ext}",
+  "asar": true,
+  "npmRebuild": false,
+  "afterPack": "desktop/after-pack.cjs",
+  "directories": {
+    "output": "release-wallpaper",
+    "buildResources": "desktop/build"
+  },
+  "files": [
+    "package.json",
+    "desktop/electron/**/*",
+    "desktop/build/**/*",
+    "dist-wallpaper/**/*",
+    "!node_modules/**/*"
+  ],
+  "mac": {
+    "category": "public.app-category.entertainment",
+    "target": ["dmg", "zip"],
+    "icon": "desktop/build/icon.png",
+    "extendInfo": {
+      "CFBundleDisplayName": "나의 산호초 바탕화면"
+    }
+  },
+  "dmg": {
+    "title": "나의 산호초 바탕화면"
+  },
+  "win": {
+    "target": ["nsis", "portable"],
+    "icon": "desktop/build/icon.png"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "나의 산호초 바탕화면"
+  }
+}

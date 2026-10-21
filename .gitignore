@@ -1,6 +1,9 @@
 node_modules/
 dist/
+.next/
 .wrangler/
 .vinext/
+dist-wallpaper/
+release-wallpaper/
 *.tsbuildinfo
 .DS_Store
