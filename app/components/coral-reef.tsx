@@ -96,18 +96,23 @@ type ReefEngine = {
 
 const MANIFEST = manifestJson.assets as ReefAsset[];
 const ASSETS = Object.fromEntries(MANIFEST.map((asset) => [asset.id, asset])) as Record<string, ReefAsset>;
-const DISTANT_FISH_TYPES = ["silverTang", "butterflyfish", "bannerfish", "yellowTang"];
 const STORAGE_KEY = "photo-reef:v1";
 const CCD_STORAGE_KEY = "photo-reef:ccd:v1";
 const DEFAULT_CCD_STRENGTH = 0.72;
+const WINDOWS_WALLPAPER_DOWNLOAD_URL = "https://github.com/1009pls666-spec/coral-reef-wallpaper-downloads/releases/download/v0.1.0/coral-reef-wallpaper-0.1.0-win-x64-portable.zip";
+const MAC_WALLPAPER_DOWNLOAD_URL = "https://github.com/1009pls666-spec/coral-reef-wallpaper-downloads/releases/download/v0.1.0/coral-reef-wallpaper-0.1.0-mac-arm64.dmg";
 // Keep individual saved sizes intact while making every foreground animal
 // read clearly on first load. This also upgrades existing saved reefs because
 // the visual baseline is applied only at render time.
 const BASE_ANIMAL_VISUAL_SCALE = 1.03;
-const WHALE_SCREEN_WIDTH = 0.25;
+// The ambient whale is a rare, cinematic pass: it fills roughly half of the
+// viewport while keeping user-added whales at their normal editable size.
+const WHALE_SCREEN_WIDTH = 0.52;
 const WHALE_REFERENCE_SIZE = 0.288;
 const WHALE_REFERENCE_DEPTH_SCALE = 0.6472;
-const WHALE_PASS_GAP_SECONDS = 4;
+// A full pass takes about 31 seconds. Hiding it for another 58 seconds keeps
+// the start-to-start cadence close to 90 seconds across viewport sizes.
+const WHALE_PASS_GAP_SECONDS = 58;
 const STANDARD_FISH_MAX_SIZE = 0.35;
 const LARGE_SWIMMER_MAX_SIZE = STANDARD_FISH_MAX_SIZE * 5;
 const TAU = Math.PI * 2;
@@ -301,7 +306,7 @@ function validateImport(value: unknown): ReefObject[] | null {
   return parsed.length ? parsed : null;
 }
 
-function Icon({ name }: { name: "add" | "food" | "edit" | "pause" | "play" | "save" | "settings" | "hide" | "undo" | "redo" | "close" }) {
+function Icon({ name }: { name: "add" | "food" | "edit" | "pause" | "play" | "save" | "desktop" | "download" | "windows" | "apple" | "settings" | "hide" | "undo" | "redo" | "close" }) {
   const paths = {
     add: <><path d="M12 5v14M5 12h14" /></>,
     food: <><path d="M5 14c1.7 4 12.3 4 14 0" /><path d="M4 13h16" /><circle cx="8" cy="9" r="1" /><circle cx="12.5" cy="7" r="1" /><circle cx="16" cy="10" r="1" /></>,
@@ -309,6 +314,10 @@ function Icon({ name }: { name: "add" | "food" | "edit" | "pause" | "play" | "sa
     pause: <><path d="M9 6v12M15 6v12" /></>,
     play: <path d="m9 6 9 6-9 6V6Z" />,
     save: <><path d="M5 4h12l2 2v14H5V4Z" /><path d="M8 4v6h8V4M8 20v-6h8v6" /></>,
+    desktop: <><rect x="3.5" y="4.5" width="17" height="12" rx="2" /><path d="M9 20h6M12 16.5V20" /><path d="m9.5 11 2.5 2.5 2.5-2.5M12 7.5v6" /></>,
+    download: <><path d="M12 4v11" /><path d="m8 11 4 4 4-4" /><path d="M5 20h14" /></>,
+    windows: <><path d="M4 5.5 10.5 4v7H4v-5.5ZM12 3.7 20 2v9h-8V3.7ZM4 12.5h6.5v7L4 18.5v-6ZM12 12.5h8v9l-8-1.7v-7.3Z" /></>,
+    apple: <><path d="M16.7 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.5-.1-2.8.8-3.5.8-.7 0-1.8-.8-3-.8-1.5 0-3 .9-3.8 2.3-1.7 2.9-.4 7.2 1.2 9.5.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3.1-.7 1.4 0 1.9.7 3.1.7 1.3 0 2.1-1.1 2.9-2.3.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.8-1.1-2.8-3.8Z" /><path d="M14.4 5.8c.6-.8 1.1-1.9 1-3-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.8-1 2.9 1 0 2-.5 2.7-1.3Z" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" /></>,
     hide: <><path d="M3 12s3.3-5 9-5 9 5 9 5-3.3 5-9 5-9-5-9-5Z" /><path d="m4 4 16 16" /></>,
     undo: <><path d="m9 7-5 5 5 5" /><path d="M5 12h8a6 6 0 0 1 6 6" /></>,
@@ -356,6 +365,7 @@ export function CoralReef() {
   const [uiHidden, setUiHidden] = useState(startsAsDesktopWallpaper);
   const [addOpen, setAddOpen] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
+  const [desktopOpen, setDesktopOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [ccdEnabled, setCcdEnabled] = useState(true);
   const [ccdStrength, setCcdStrength] = useState(DEFAULT_CCD_STRENGTH);
@@ -1497,22 +1507,6 @@ export function CoralReef() {
       </picture>
       <div className="reef-caustics" aria-hidden="true"><i /><i /><i /></div>
       <div className="reef-plankton" aria-hidden="true">{Array.from({ length: 18 }, (_, index) => <i key={index} style={{ "--i": index } as CSSProperties} />)}</div>
-      <div className="reef-distant-schools" aria-hidden="true">
-        {Array.from({ length: 9 }, (_, index) => {
-          const far = index < 4;
-          const reverse = index % 3 === 1;
-          const asset = ASSETS[DISTANT_FISH_TYPES[index % DISTANT_FISH_TYPES.length]];
-          return <i key={index} className={`${far ? "is-far" : "is-mid"}${reverse ? " is-reverse" : ""}`} style={{
-            "--top": `${11 + seeded(index, 163) * 54}%`,
-            "--size": `${far ? 11 + seeded(index, 167) * 10 : 20 + seeded(index, 167) * 17}px`,
-            "--duration": `${far ? 43 + seeded(index, 169) * 22 : 29 + seeded(index, 169) * 17}s`,
-            "--delay": `${-seeded(index, 173) * 48}s`,
-            "--sway": `${(seeded(index, 179) - 0.5) * 62}px`,
-            "--opacity": `${far ? 0.11 + seeded(index, 181) * 0.07 : 0.16 + seeded(index, 181) * 0.09}`,
-            "--blur": `${far ? 1.15 + seeded(index, 191) * 0.7 : 0.55 + seeded(index, 191) * 0.55}px`,
-          } as CSSProperties}><img src={asset.file} alt="" /></i>;
-        })}
-      </div>
       <canvas ref={canvasRef} className="reef-webgl" aria-label="헤엄치는 산호초 바다" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} />
       <div className="reef-ccd-overlay" aria-hidden="true"><i className="ccd-bloom" /><i className="ccd-noise" /><i className="ccd-blocks" /><i className="ccd-vignette" /></div>
 
@@ -1586,13 +1580,14 @@ export function CoralReef() {
 
       {!uiHidden && <>
         <nav className="reef-toolbar" aria-label="바다 도구" data-reef-ui>
-          <ToolButton label="추가" icon="add" active={addOpen || Boolean(addType)} onClick={() => { setAddOpen((open) => !open); setSaveOpen(false); setSettingsOpen(false); setFeedingMode(false); }} />
-          <ToolButton label="먹이" icon="food" active={feedingMode} onClick={() => { setFeedingMode((mode) => !mode); setEditMode(false); setSelectedId(null); setAddType(null); setAddOpen(false); setSaveOpen(false); setSettingsOpen(false); }} />
-          <ToolButton label={editMode ? "감상" : "편집"} icon="edit" active={editMode} onClick={() => { setEditMode((mode) => !mode); setSelectedId(null); setAddType(null); setFeedingMode(false); setSettingsOpen(false); }} />
+          <ToolButton label="추가" icon="add" active={addOpen || Boolean(addType)} onClick={() => { setAddOpen((open) => !open); setSaveOpen(false); setDesktopOpen(false); setSettingsOpen(false); setFeedingMode(false); }} />
+          <ToolButton label="먹이" icon="food" active={feedingMode} onClick={() => { setFeedingMode((mode) => !mode); setEditMode(false); setSelectedId(null); setAddType(null); setAddOpen(false); setSaveOpen(false); setDesktopOpen(false); setSettingsOpen(false); }} />
+          <ToolButton label={editMode ? "감상" : "편집"} icon="edit" active={editMode} onClick={() => { setEditMode((mode) => !mode); setSelectedId(null); setAddType(null); setFeedingMode(false); setDesktopOpen(false); setSettingsOpen(false); }} />
           <ToolButton label={paused ? "재생" : "멈춤"} icon={paused ? "play" : "pause"} active={paused} onClick={() => setPaused((value) => !value)} />
-          <ToolButton label="저장" icon="save" active={saveOpen} onClick={() => { setSaveOpen((open) => !open); setAddOpen(false); setSettingsOpen(false); setFeedingMode(false); }} />
-          <ToolButton label="화질 설정" icon="settings" active={settingsOpen} onClick={() => { setSettingsOpen((open) => !open); setAddOpen(false); setSaveOpen(false); setFeedingMode(false); }} />
-          <ToolButton label="숨기기" icon="hide" onClick={() => { setUiHidden(true); setAddOpen(false); setSaveOpen(false); setSettingsOpen(false); setAddType(null); setFeedingMode(false); }} />
+          <ToolButton label="저장" icon="save" active={saveOpen} onClick={() => { setSaveOpen((open) => !open); setAddOpen(false); setDesktopOpen(false); setSettingsOpen(false); setFeedingMode(false); }} />
+          <ToolButton label="바탕화면" icon="desktop" active={desktopOpen} onClick={() => { setDesktopOpen((open) => !open); setAddOpen(false); setSaveOpen(false); setSettingsOpen(false); setFeedingMode(false); }} />
+          <ToolButton label="화질 설정" icon="settings" active={settingsOpen} onClick={() => { setSettingsOpen((open) => !open); setAddOpen(false); setSaveOpen(false); setDesktopOpen(false); setFeedingMode(false); }} />
+          <ToolButton label="숨기기" icon="hide" onClick={() => { setUiHidden(true); setAddOpen(false); setSaveOpen(false); setDesktopOpen(false); setSettingsOpen(false); setAddType(null); setFeedingMode(false); }} />
         </nav>
         <div className="reef-history" data-reef-ui>
           <ToolButton label="실행 취소" icon="undo" onClick={undo} disabled={!historyRef.current.length} />
@@ -1618,6 +1613,24 @@ export function CoralReef() {
           <button type="button" onClick={() => fileRef.current?.click()}>구성 불러오기 <small>JSON</small></button>
           <button type="button" className="danger" onClick={reset}>기본 산호초로 초기화</button>
           <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void loadJson(file); event.currentTarget.value = ""; }} />
+        </aside>}
+
+        {desktopOpen && <aside className="reef-panel reef-desktop-download" data-reef-ui aria-label="바탕화면 앱 다운로드">
+          <header><div><small>LIVE WALLPAPER</small><strong>움직이는 바탕화면</strong></div><button type="button" onClick={() => setDesktopOpen(false)} aria-label="바탕화면 다운로드 닫기"><Icon name="close" /></button></header>
+          <p>지금 보고 있는 산호초를 컴퓨터 바탕화면으로 설치하세요.</p>
+          <div className="reef-download-options">
+            <a href={WINDOWS_WALLPAPER_DOWNLOAD_URL} target="_blank" rel="noreferrer" aria-label="Windows용 산호초 바탕화면 다운로드">
+              <span className="reef-download-os"><Icon name="windows" /></span>
+              <span><b>Windows</b><small>Windows 10 · 11</small></span>
+              <span className="reef-download-arrow"><Icon name="download" /></span>
+            </a>
+            <a href={MAC_WALLPAPER_DOWNLOAD_URL} target="_blank" rel="noreferrer" aria-label="Mac용 산호초 바탕화면 다운로드">
+              <span className="reef-download-os"><Icon name="apple" /></span>
+              <span><b>Mac</b><small>Apple Silicon</small></span>
+              <span className="reef-download-arrow"><Icon name="download" /></span>
+            </a>
+          </div>
+          <small className="reef-download-note">받은 파일을 열면 바탕화면 앱으로 설치할 수 있어요.</small>
         </aside>}
 
         {settingsOpen && <aside className="reef-panel reef-camera-settings" data-reef-ui aria-label="카메라 화질 설정">

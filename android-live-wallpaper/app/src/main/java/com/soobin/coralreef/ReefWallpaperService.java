@@ -176,7 +176,7 @@ public class ReefWallpaperService extends WallpaperService {
         private void resetScene() {
             if (width <= 0 || height <= 0 || smallFish == null) return;
             swimmers.clear();
-            swimmers.add(make(whale, Kind.WHALE, .25f, .056f, .13f, .18f, false));
+            swimmers.add(make(whale, Kind.WHALE, .52f, .056f, .13f, .18f, false));
             swimmers.add(make(shark, Kind.SHARK, .48f, .029f, .34f, .40f, true));
             swimmers.add(make(turtle, Kind.TURTLE, .29f, .021f, .72f, .82f, true));
             swimmers.add(make(jelly, Kind.JELLY, .20f, .012f, .52f, .66f, true));
@@ -252,11 +252,11 @@ public class ReefWallpaperService extends WallpaperService {
                 float fishWidth = width * swimmer.size;
                 if (swimmer.facingRight && swimmer.x > width + fishWidth) {
                     respawn(swimmer, false);
-                    if (swimmer.kind == Kind.WHALE) swimmer.passCooldown = 4f;
+                    if (swimmer.kind == Kind.WHALE) swimmer.passCooldown = 58f;
                 }
                 if (!swimmer.facingRight && swimmer.x < -fishWidth) {
                     respawn(swimmer, true);
-                    if (swimmer.kind == Kind.WHALE) swimmer.passCooldown = 4f;
+                    if (swimmer.kind == Kind.WHALE) swimmer.passCooldown = 58f;
                 }
             }
 
