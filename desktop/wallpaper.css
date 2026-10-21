@@ -45,6 +45,34 @@ html[data-desktop="wallpaper"] .reef-toast { display: none !important; }
 }
 
 .desktop-wallpaper-controls button:hover { background: rgba(105, 217, 227, .28); }
-.desktop-wallpaper-controls span { display: flex; align-items: center; gap: 3px; padding-right: 6px; font-size: 8px; }
-.desktop-wallpaper-controls kbd { padding: 2px 5px; border: 1px solid rgba(224, 250, 253, .18); border-radius: 5px; background: rgba(255, 255, 255, .055); font: inherit; }
-.desktop-wallpaper-controls b { opacity: .4; }
+.desktop-shortcut-rows { display: grid; gap: 3px; padding-right: 6px; }
+.desktop-shortcut-rows span { display: grid; grid-template-columns: auto auto auto auto auto 1fr; align-items: center; gap: 3px; font-size: 8px; white-space: nowrap; }
+.desktop-shortcut-rows kbd { padding: 2px 5px; border: 1px solid rgba(224, 250, 253, .18); border-radius: 5px; background: rgba(255, 255, 255, .055); font: inherit; }
+.desktop-shortcut-rows b { opacity: .4; }
+.desktop-shortcut-rows em { margin-left: 5px; color: rgba(207, 241, 246, .62); font-style: normal; }
+
+.desktop-shortcut-toast {
+  position: fixed;
+  z-index: 500;
+  left: max(18px, env(safe-area-inset-left));
+  top: max(18px, env(safe-area-inset-top));
+  min-width: 255px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(220, 249, 253, .22);
+  border-radius: 15px;
+  color: rgba(234, 252, 255, .86);
+  background: rgba(3, 30, 44, .64);
+  box-shadow: 0 12px 34px rgba(0, 20, 39, .2), inset 0 1px rgba(255, 255, 255, .08);
+  backdrop-filter: blur(15px) saturate(1.08);
+  pointer-events: none;
+  animation: desktop-shortcut-toast 9s ease both;
+}
+.desktop-shortcut-toast strong { font-size: 11px; }
+.desktop-shortcut-toast .desktop-shortcut-rows { padding: 0; }
+@keyframes desktop-shortcut-toast {
+  0% { opacity: 0; transform: translateY(-7px); }
+  7%, 78% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}

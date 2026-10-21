@@ -106,6 +106,10 @@ const AMBIENT_WHALE_ID = "humpbackWhale-default-ambient";
 // read clearly on first load. This also upgrades existing saved reefs because
 // the visual baseline is applied only at render time.
 const BASE_ANIMAL_VISUAL_SCALE = 1.03;
+const DEFAULT_ANIMAL_POPULATION_SCALE = 1;
+const MIN_ANIMAL_POPULATION_SCALE = 0.25;
+const MAX_ANIMAL_POPULATION_SCALE = 2.5;
+const POPULATION_AUTO_ID_PREFIX = "population-auto-";
 // The source whale is unusually wide and shallow. Let the ambient pass span
 // almost the whole viewport so its visible body also feels genuinely huge,
 // while keeping user-added whales at their normal editable size.
@@ -118,6 +122,17 @@ const LARGE_SWIMMER_MAX_SIZE = STANDARD_FISH_MAX_SIZE * 5;
 const TAU = Math.PI * 2;
 const SMALL_FISH_EXCLUSIONS = new Set(["reefShark", "humpbackWhale", "seaTurtle", "jellyfish"]);
 const LARGE_SWIMMERS = new Set(["reefShark", "humpbackWhale"]);
+const SCALABLE_POPULATION_TYPES = [
+  "blueTang",
+  "yellowTang",
+  "clownfish",
+  "bannerfish",
+  "butterflyfish",
+  "silverTang",
+  "seaTurtle",
+  "jellyfish",
+] as const;
+const SCALABLE_POPULATION_SET = new Set<string>(SCALABLE_POPULATION_TYPES);
 const DEFAULT_POPULATION_LIMITS: Record<string, number> = {
   blueTang: 2,
   yellowTang: 2,
@@ -236,6 +251,52 @@ function trimDefaultPopulation(objects: ReefObject[]) {
     counts.set(object.type, count + 1);
     return count < DEFAULT_POPULATION_LIMITS[object.type];
   });
+}
+
+function isScalableDefaultAnimal(object: ReefObject) {
+  return object.id.includes("-default-") && SCALABLE_POPULATION_SET.has(object.type);
+}
+
+function populationScene(objects: ReefObject[], populationScale: number) {
+  const scalableDefaults = objects.filter(isScalableDefaultAnimal);
+  const fixedObjects = objects.filter((object) => !isScalableDefaultAnimal(object));
+  const balancedDefaults: ReefObject[] = [];
+  for (let occurrence = 0; occurrence < 3; occurrence += 1) {
+    for (const type of SCALABLE_POPULATION_TYPES) {
+      const match = scalableDefaults.filter((object) => object.type === type)[occurrence];
+      if (match) balancedDefaults.push(match);
+    }
+  }
+  const normalizedScale = clamp(populationScale, MIN_ANIMAL_POPULATION_SCALE, MAX_ANIMAL_POPULATION_SCALE);
+  const visibleDefaultCount = normalizedScale < 1
+    ? Math.max(1, Math.round(scalableDefaults.length * normalizedScale))
+    : scalableDefaults.length;
+  const visibleDefaults = balancedDefaults.slice(0, visibleDefaultCount);
+  const extraCount = normalizedScale > 1
+    ? Math.round(scalableDefaults.length * (normalizedScale - 1))
+    : 0;
+  const extras = Array.from({ length: extraCount }, (_, index): ReefObject => {
+    const type = SCALABLE_POPULATION_TYPES[index % SCALABLE_POPULATION_TYPES.length];
+    const asset = ASSETS[type];
+    const seedIndex = index + 300;
+    const depth = asset.depthRange[0] + seeded(seedIndex, 211) * (asset.depthRange[1] - asset.depthRange[0]);
+    const size = asset.sizeRange[0] + seeded(seedIndex, 223) * (asset.sizeRange[1] - asset.sizeRange[0]);
+    return {
+      id: `${POPULATION_AUTO_ID_PREFIX}${index}-${type}`,
+      type,
+      x: 0.05 + seeded(seedIndex, 227) * 0.9,
+      y: 0.12 + seeded(seedIndex, 229) * 0.68,
+      size,
+      rotation: (seeded(seedIndex, 233) - 0.5) * 6,
+      depth,
+      speed: 0.76 + seeded(seedIndex, 239) * 0.5,
+      range: 0.07 + seeded(seedIndex, 241) * 0.12,
+      flipped: seeded(seedIndex, 251) > 0.5,
+      locked: false,
+      phase: seeded(seedIndex, 257) * TAU,
+    };
+  });
+  return [...fixedObjects, ...visibleDefaults, ...extras];
 }
 
 function defaultReef(): ReefObject[] {
@@ -373,6 +434,7 @@ export function CoralReef() {
   const [ccdStrength, setCcdStrength] = useState(DEFAULT_CCD_STRENGTH);
   const ccdActive = ccdEnabled && ccdStrength > 0.001;
   const [globalAnimalScale, setGlobalAnimalScale] = useState(1);
+  const [globalAnimalPopulation, setGlobalAnimalPopulation] = useState(DEFAULT_ANIMAL_POPULATION_SCALE);
   const [addType, setAddType] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
@@ -391,6 +453,8 @@ export function CoralReef() {
   const fileRef = useRef<HTMLInputElement>(null);
   const engineRef = useRef<ReefEngine | null>(null);
   const objectsRef = useRef(objects);
+  const sceneObjects = useMemo(() => populationScene(objects, globalAnimalPopulation), [objects, globalAnimalPopulation]);
+  const sceneObjectsRef = useRef(sceneObjects);
   const editRef = useRef(editMode);
   const pausedRef = useRef(paused);
   const selectedRef = useRef(selectedId);
@@ -404,8 +468,10 @@ export function CoralReef() {
   const dragRef = useRef<{ id: string; snapshot: ReefObject[] } | null>(null);
 
   const selected = useMemo(() => objects.find((object) => object.id === selectedId) ?? null, [objects, selectedId]);
+  const visibleAnimalCount = useMemo(() => sceneObjects.filter((object) => ASSETS[object.type].kind === "animal").length, [sceneObjects]);
 
   useEffect(() => { objectsRef.current = objects; }, [objects]);
+  useEffect(() => { sceneObjectsRef.current = sceneObjects; }, [sceneObjects]);
   useEffect(() => { editRef.current = editMode; }, [editMode]);
   useEffect(() => { pausedRef.current = paused; }, [paused]);
   useEffect(() => { selectedRef.current = selectedId; }, [selectedId]);
@@ -504,10 +570,11 @@ export function CoralReef() {
     try {
       const cameraRaw = localStorage.getItem(CCD_STORAGE_KEY);
       if (cameraRaw) {
-        const camera = JSON.parse(cameraRaw) as { enabled?: unknown; strength?: unknown; animalScale?: unknown };
+        const camera = JSON.parse(cameraRaw) as { enabled?: unknown; strength?: unknown; animalScale?: unknown; animalPopulation?: unknown };
         if (typeof camera.enabled === "boolean") setCcdEnabled(camera.enabled);
         if (typeof camera.strength === "number" && Number.isFinite(camera.strength)) setCcdStrength(clamp(camera.strength, 0, 1));
         if (typeof camera.animalScale === "number" && Number.isFinite(camera.animalScale)) setGlobalAnimalScale(clamp(camera.animalScale, 0.5, 1.8));
+        if (typeof camera.animalPopulation === "number" && Number.isFinite(camera.animalPopulation)) setGlobalAnimalPopulation(clamp(camera.animalPopulation, MIN_ANIMAL_POPULATION_SCALE, MAX_ANIMAL_POPULATION_SCALE));
       }
     } catch { /* Keep the reference CCD preset. */ }
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -525,7 +592,7 @@ export function CoralReef() {
   }, [objects]);
 
   useEffect(() => {
-    try { localStorage.setItem(CCD_STORAGE_KEY, JSON.stringify({ enabled: ccdEnabled, strength: ccdStrength, animalScale: globalAnimalScale })); } catch { /* Keep the current in-memory setting. */ }
+    try { localStorage.setItem(CCD_STORAGE_KEY, JSON.stringify({ enabled: ccdEnabled, strength: ccdStrength, animalScale: globalAnimalScale, animalPopulation: globalAnimalPopulation })); } catch { /* Keep the current in-memory setting. */ }
     const engine = engineRef.current;
     if (!engine) return;
     const lowPower = (navigator.hardwareConcurrency || 8) <= 4;
@@ -533,7 +600,7 @@ export function CoralReef() {
     const clearCap = 2;
     engine.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, ccdActive ? ccdCap : clearCap));
     engine.renderer.setSize(engine.width, engine.height, false);
-  }, [ccdActive, ccdEnabled, ccdStrength, globalAnimalScale]);
+  }, [ccdActive, ccdEnabled, ccdStrength, globalAnimalScale, globalAnimalPopulation]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -585,7 +652,7 @@ export function CoralReef() {
           textureFor(asset),
           fetch(asset.mask).then((response) => response.ok ? response.arrayBuffer() : Promise.reject(new Error("mask"))).catch(() => null),
         ]);
-        if (disposed || runtimes.has(object.id) || !objectsRef.current.some((item) => item.id === object.id)) return;
+        if (disposed || runtimes.has(object.id) || !sceneObjectsRef.current.some((item) => item.id === object.id)) return;
         const image = texture.image as { width: number; height: number };
         const material = createMaterial(texture, asset, object.phase);
         const mesh = new THREE.Mesh(asset.kind === "animal" ? animalGeometry : plantGeometry, material);
@@ -669,14 +736,14 @@ export function CoralReef() {
     const observer = new ResizeObserver(resize);
     observer.observe(root);
     resize();
-    engine.sync(objectsRef.current);
+    engine.sync(sceneObjectsRef.current);
 
     const tick = (now: number) => {
       if (!running || disposed) return;
       const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
       last = now;
       if (!pausedRef.current) elapsed += dt * (reducedRef.current ? 0.32 : 1);
-      const current = objectsRef.current;
+      const current = sceneObjectsRef.current;
       const byId = new Map(current.map((object) => [object.id, object]));
       const minBase = Math.min(engine.width, engine.height * 1.45);
       const activeFood = [...foodDropsRef.current].reverse().find((drop) => now - drop.bornAt < 6500);
@@ -1175,7 +1242,7 @@ export function CoralReef() {
     };
   }, [notify]);
 
-  useEffect(() => { engineRef.current?.sync(objects); }, [objects]);
+  useEffect(() => { engineRef.current?.sync(sceneObjects); }, [sceneObjects]);
 
   const addObject = useCallback((type: string, x: number, y: number) => {
     const asset = ASSETS[type];
@@ -1200,7 +1267,9 @@ export function CoralReef() {
   const hitAt = useCallback((x: number, y: number, touch: boolean) => {
     const engine = engineRef.current;
     if (!engine) return null;
-    const ordered = [...objectsRef.current].sort((a, b) => b.depth - a.depth);
+    const ordered = [...sceneObjectsRef.current]
+      .filter((object) => !editRef.current || !object.id.startsWith(POPULATION_AUTO_ID_PREFIX))
+      .sort((a, b) => b.depth - a.depth);
     for (const object of ordered) {
       const runtime = engine.runtimes.get(object.id);
       if (!runtime) continue;
@@ -1367,7 +1436,7 @@ export function CoralReef() {
   }, [deleteSelected, updateSelected]);
 
   const downloadJson = () => {
-    const blob = new Blob([JSON.stringify({ version: 1, objects }, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ version: 2, objects, settings: { animalPopulation: globalAnimalPopulation } }, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob); const anchor = document.createElement("a");
     anchor.href = url; anchor.download = `나의-산호초-${new Date().toISOString().slice(0, 10)}.json`; anchor.click(); URL.revokeObjectURL(url);
     notify("구성 파일을 저장했어요");
@@ -1375,9 +1444,15 @@ export function CoralReef() {
 
   const loadJson = async (file: File) => {
     try {
-      const parsed = validateImport(JSON.parse(await file.text()));
+      const imported = JSON.parse(await file.text()) as { settings?: { animalPopulation?: unknown } };
+      const parsed = validateImport(imported);
       if (!parsed) throw new Error("invalid");
-      checkpoint(); setObjects(parsed); setSelectedId(null); notify("구성을 불러왔어요");
+      checkpoint();
+      setObjects(parsed);
+      if (typeof imported.settings?.animalPopulation === "number" && Number.isFinite(imported.settings.animalPopulation)) {
+        setGlobalAnimalPopulation(clamp(imported.settings.animalPopulation, MIN_ANIMAL_POPULATION_SCALE, MAX_ANIMAL_POPULATION_SCALE));
+      }
+      setSelectedId(null); notify("구성을 불러왔어요");
     } catch { notify("올바른 산호초 구성 파일이 아니에요"); }
   };
 
@@ -1620,6 +1695,11 @@ export function CoralReef() {
               <span className="reef-download-arrow"><Icon name="download" /></span>
             </a>
           </div>
+          <div className="reef-download-shortcuts" aria-label="바탕화면 앱 단축키">
+            <strong>설치 후 단축키</strong>
+            <span><kbd>Ctrl / ⌘</kbd><b>+</b><kbd>Shift</kbd><b>+</b><kbd>E</kbd><small>편집 열기 · 바탕화면 복귀</small></span>
+            <span><kbd>Ctrl / ⌘</kbd><b>+</b><kbd>Shift</kbd><b>+</b><kbd>Space</kbd><small>움직임 멈춤 · 재생</small></span>
+          </div>
           <small className="reef-download-note">받은 파일을 열면 바탕화면 앱으로 설치할 수 있어요.</small>
         </aside>}
 
@@ -1637,7 +1717,11 @@ export function CoralReef() {
             <span><b>전체 생물 크기</b><output>{Math.round(globalAnimalScale * 100)}%</output></span>
             <input aria-label="전체 생물 크기" type="range" min="0.5" max="1.8" step="0.01" value={globalAnimalScale} onChange={(event) => setGlobalAnimalScale(Number(event.target.value))} />
           </label>
-          <p>CCD 효과는 색을 유지한 채 화질만 바꾸고, 전체 크기는 각 생물의 개별 비율을 유지해요.</p>
+          <label className="reef-camera-strength reef-camera-population">
+            <span><b>전체 생물 수</b><output>{Math.round(globalAnimalPopulation * 100)}% · {visibleAnimalCount}마리</output></span>
+            <input aria-label="전체 생물 수" type="range" min={MIN_ANIMAL_POPULATION_SCALE} max={MAX_ANIMAL_POPULATION_SCALE} step="0.05" value={globalAnimalPopulation} onChange={(event) => setGlobalAnimalPopulation(Number(event.target.value))} />
+          </label>
+          <p>CCD 효과는 색을 유지한 채 화질만 바꾸고, 크기와 생물 수는 즉시 전체 바다에 반영돼요.</p>
         </aside>}
 
         {selected && editMode && <aside className="reef-panel reef-inspector" data-reef-ui>
