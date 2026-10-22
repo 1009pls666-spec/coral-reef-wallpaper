@@ -46,7 +46,28 @@ Windows NSIS 설치 파일/포터블 EXE:
 npm run desktop:dist:win
 ```
 
-결과물은 `release-wallpaper/`에 생성됩니다. macOS에서 외부 배포하려면 Apple Developer ID 서명과 공증 설정이 별도로 필요합니다. Windows 설치 파일도 공개 배포 시 코드 서명을 권장합니다.
+결과물은 `release-wallpaper/`에 생성됩니다. Windows 설치 파일도 공개 배포 시 코드 서명을 권장합니다.
+
+## macOS 정식 서명과 공증
+
+Gatekeeper 경고 없이 배포하려면 Apple Developer Program 가입, `Developer ID Application` 인증서, Apple 공증 인증 정보가 필요합니다. 인증서나 비밀번호 파일은 저장소에 넣지 않습니다.
+
+1. Xcode의 `Settings > Accounts > Manage Certificates`에서 `Developer ID Application` 인증서를 만들고 이 Mac의 키체인에 설치합니다.
+2. Apple ID의 앱 전용 암호를 만든 다음 아래 명령으로 공증 자격 증명을 키체인에 저장합니다. 명령이 암호를 물으면 Apple ID 일반 암호가 아니라 앱 전용 암호를 입력합니다.
+
+```bash
+xcrun notarytool store-credentials "coral-reef-notary" \
+  --apple-id "APPLE_ID_EMAIL" \
+  --team-id "APPLE_TEAM_ID"
+```
+
+3. 정식 DMG와 ZIP을 빌드합니다.
+
+```bash
+APPLE_KEYCHAIN_PROFILE="coral-reef-notary" npm run desktop:dist:mac:notarized
+```
+
+이 명령은 Developer ID 서명, Hardened Runtime, Apple 공증, 티켓 스테이플링을 수행한 뒤 `codesign`, `spctl`, `stapler`로 결과를 검증합니다. 공증 인증은 App Store Connect API 키 환경 변수 또는 Apple ID 환경 변수 방식도 지원합니다.
 
 ## 플랫폼 동작
 

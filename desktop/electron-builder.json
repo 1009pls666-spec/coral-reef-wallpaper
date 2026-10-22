@@ -5,7 +5,6 @@
   "artifactName": "coral-reef-wallpaper-${version}-${os}-${arch}.${ext}",
   "asar": true,
   "npmRebuild": false,
-  "afterPack": "desktop/after-pack.cjs",
   "directories": {
     "output": "release-wallpaper",
     "buildResources": "desktop/build"
@@ -21,6 +20,11 @@
     "category": "public.app-category.entertainment",
     "target": ["dmg", "zip"],
     "icon": "desktop/build/icon.png",
+    "hardenedRuntime": true,
+    "gatekeeperAssess": false,
+    "entitlements": "desktop/build/entitlements.mac.plist",
+    "entitlementsInherit": "desktop/build/entitlements.mac.plist",
+    "notarize": true,
     "extendInfo": {
       "CFBundleDisplayName": "나의 산호초 바탕화면"
     }

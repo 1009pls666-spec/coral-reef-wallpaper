@@ -12,3 +12,6 @@ android-live-wallpaper/app/build/
 android-live-wallpaper/*.jks
 *.tsbuildinfo
 .DS_Store
+*.p12
+*.p8
+.env.notary

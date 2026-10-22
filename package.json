@@ -14,6 +14,7 @@
     "desktop:run": "npm run desktop:build && electron desktop/electron/main.cjs",
     "desktop:dist": "npm run desktop:build && electron-builder --config desktop/electron-builder.json",
     "desktop:dist:mac": "npm run desktop:build && electron-builder --config desktop/electron-builder.json --mac",
+    "desktop:dist:mac:notarized": "node desktop/build-notarized.mjs",
     "desktop:dist:win": "npm run desktop:build && electron-builder --config desktop/electron-builder.json --win",
     "test:auth": "vitest run",
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
