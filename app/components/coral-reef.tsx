@@ -101,7 +101,7 @@ const STORAGE_KEY = "photo-reef:v1";
 const CCD_STORAGE_KEY = "photo-reef:ccd:v1";
 const DEFAULT_CCD_STRENGTH = 0.72;
 const WINDOWS_WALLPAPER_DOWNLOAD_URL = "https://github.com/1009pls666-spec/coral-reef-wallpaper-downloads/releases/download/v0.1.0/coral-reef-wallpaper-0.1.0-win-x64-portable.zip";
-const MAC_WALLPAPER_DOWNLOAD_URL = "https://github.com/1009pls666-spec/coral-reef-wallpaper-downloads/releases/download/v0.1.0/coral-reef-wallpaper-0.1.0-mac-arm64.dmg";
+const MAC_WALLPAPER_DOWNLOAD_URL = "https://github.com/1009pls666-spec/coral-reef-wallpaper-downloads/releases/download/v0.1.0/coral-reef-wallpaper-0.1.0-mac-arm64-v2.dmg";
 const AMBIENT_WHALE_ID = "humpbackWhale-default-ambient";
 // Keep individual saved sizes intact while making every foreground animal
 // read clearly on first load. This also upgrades existing saved reefs because
