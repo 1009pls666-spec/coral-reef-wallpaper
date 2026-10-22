@@ -45,6 +45,7 @@ type ReefObject = {
   phase: number;
 };
 type BubbleGroup = { id: string; x: number; y: number; count: number; seed: number };
+type WaterTrail = { id: string; x: number; y: number; length: number; angle: number; seed: number };
 type FoodDrop = { id: string; x: number; y: number; bornAt: number; seed: number };
 type BloodBloom = { id: string; x: number; y: number; seed: number };
 type InstallPromptEvent = Event & {
@@ -109,6 +110,9 @@ const BASE_ANIMAL_VISUAL_SCALE = 1.03;
 const DEFAULT_ANIMAL_POPULATION_SCALE = 1;
 const MIN_ANIMAL_POPULATION_SCALE = 0.25;
 const MAX_ANIMAL_POPULATION_SCALE = 2.5;
+const DEFAULT_ANIMAL_SPEED_SCALE = 1;
+const MIN_ANIMAL_SPEED_SCALE = 0.35;
+const MAX_ANIMAL_SPEED_SCALE = 2;
 const POPULATION_AUTO_ID_PREFIX = "population-auto-";
 // The source whale is unusually wide and shallow. Let the ambient pass span
 // almost the whole viewport so its visible body also feels genuinely huge,
@@ -435,10 +439,12 @@ export function CoralReef() {
   const ccdActive = ccdEnabled && ccdStrength > 0.001;
   const [globalAnimalScale, setGlobalAnimalScale] = useState(1);
   const [globalAnimalPopulation, setGlobalAnimalPopulation] = useState(DEFAULT_ANIMAL_POPULATION_SCALE);
+  const [globalAnimalSpeed, setGlobalAnimalSpeed] = useState(DEFAULT_ANIMAL_SPEED_SCALE);
   const [addType, setAddType] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const [bubbles, setBubbles] = useState<BubbleGroup[]>([]);
+  const [waterTrails, setWaterTrails] = useState<WaterTrail[]>([]);
   const [feedingMode, setFeedingMode] = useState(false);
   const [foodDrops, setFoodDrops] = useState<FoodDrop[]>([]);
   const [bloodBlooms, setBloodBlooms] = useState<BloodBloom[]>([]);
@@ -462,10 +468,13 @@ export function CoralReef() {
   const ccdEnabledRef = useRef(true);
   const ccdStrengthRef = useRef(DEFAULT_CCD_STRENGTH);
   const globalAnimalScaleRef = useRef(1);
+  const globalAnimalSpeedRef = useRef(DEFAULT_ANIMAL_SPEED_SCALE);
   const foodDropsRef = useRef<FoodDrop[]>([]);
   const historyRef = useRef<ReefObject[][]>([]);
   const futureRef = useRef<ReefObject[][]>([]);
   const dragRef = useRef<{ id: string; snapshot: ReefObject[] } | null>(null);
+  const viewGestureRef = useRef<{ pointerId: number; startX: number; startY: number; lastX: number; lastY: number; lastTrailAt: number; moved: boolean; hitId: string | null } | null>(null);
+  const trailFleeRef = useRef(new Map<string, number>());
 
   const selected = useMemo(() => objects.find((object) => object.id === selectedId) ?? null, [objects, selectedId]);
   const visibleAnimalCount = useMemo(() => sceneObjects.filter((object) => ASSETS[object.type].kind === "animal").length, [sceneObjects]);
@@ -480,6 +489,13 @@ export function CoralReef() {
   useEffect(() => { ccdEnabledRef.current = ccdEnabled; }, [ccdEnabled]);
   useEffect(() => { ccdStrengthRef.current = ccdStrength; }, [ccdStrength]);
   useEffect(() => { globalAnimalScaleRef.current = globalAnimalScale; }, [globalAnimalScale]);
+  useEffect(() => {
+    const previous = globalAnimalSpeedRef.current;
+    globalAnimalSpeedRef.current = globalAnimalSpeed;
+    if (previous <= 0) return;
+    const ratio = globalAnimalSpeed / previous;
+    for (const runtime of engineRef.current?.runtimes.values() ?? []) runtime.velocity.multiplyScalar(ratio);
+  }, [globalAnimalSpeed]);
 
   useEffect(() => {
     if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
@@ -570,11 +586,12 @@ export function CoralReef() {
     try {
       const cameraRaw = localStorage.getItem(CCD_STORAGE_KEY);
       if (cameraRaw) {
-        const camera = JSON.parse(cameraRaw) as { enabled?: unknown; strength?: unknown; animalScale?: unknown; animalPopulation?: unknown };
+        const camera = JSON.parse(cameraRaw) as { enabled?: unknown; strength?: unknown; animalScale?: unknown; animalPopulation?: unknown; animalSpeed?: unknown };
         if (typeof camera.enabled === "boolean") setCcdEnabled(camera.enabled);
         if (typeof camera.strength === "number" && Number.isFinite(camera.strength)) setCcdStrength(clamp(camera.strength, 0, 1));
         if (typeof camera.animalScale === "number" && Number.isFinite(camera.animalScale)) setGlobalAnimalScale(clamp(camera.animalScale, 0.5, 1.8));
         if (typeof camera.animalPopulation === "number" && Number.isFinite(camera.animalPopulation)) setGlobalAnimalPopulation(clamp(camera.animalPopulation, MIN_ANIMAL_POPULATION_SCALE, MAX_ANIMAL_POPULATION_SCALE));
+        if (typeof camera.animalSpeed === "number" && Number.isFinite(camera.animalSpeed)) setGlobalAnimalSpeed(clamp(camera.animalSpeed, MIN_ANIMAL_SPEED_SCALE, MAX_ANIMAL_SPEED_SCALE));
       }
     } catch { /* Keep the reference CCD preset. */ }
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -592,7 +609,7 @@ export function CoralReef() {
   }, [objects]);
 
   useEffect(() => {
-    try { localStorage.setItem(CCD_STORAGE_KEY, JSON.stringify({ enabled: ccdEnabled, strength: ccdStrength, animalScale: globalAnimalScale, animalPopulation: globalAnimalPopulation })); } catch { /* Keep the current in-memory setting. */ }
+    try { localStorage.setItem(CCD_STORAGE_KEY, JSON.stringify({ enabled: ccdEnabled, strength: ccdStrength, animalScale: globalAnimalScale, animalPopulation: globalAnimalPopulation, animalSpeed: globalAnimalSpeed })); } catch { /* Keep the current in-memory setting. */ }
     const engine = engineRef.current;
     if (!engine) return;
     const lowPower = (navigator.hardwareConcurrency || 8) <= 4;
@@ -600,7 +617,7 @@ export function CoralReef() {
     const clearCap = 2;
     engine.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, ccdActive ? ccdCap : clearCap));
     engine.renderer.setSize(engine.width, engine.height, false);
-  }, [ccdActive, ccdEnabled, ccdStrength, globalAnimalScale, globalAnimalPopulation]);
+  }, [ccdActive, ccdEnabled, ccdStrength, globalAnimalScale, globalAnimalPopulation, globalAnimalSpeed]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -659,7 +676,7 @@ export function CoralReef() {
         mesh.renderOrder = Math.round(object.depth * 1000) + (asset.kind === "animal" ? 100 : 0);
         scene.add(mesh);
         const base = Math.min(engine.width, engine.height * 1.45);
-        const speed = (asset.speedRange[0] + asset.speedRange[1]) * 0.5 * base * object.speed;
+        const speed = (asset.speedRange[0] + asset.speedRange[1]) * 0.5 * base * object.speed * globalAnimalSpeedRef.current;
         const face = object.flipped ? -1 : 1;
         const speciesTempo = asset.behavior === "whale" ? 0.38 : asset.behavior === "turtle" ? 0.52 : asset.id === "reefShark" ? 0.9 : asset.id === "bannerfish" ? 0.78 : asset.id === "blueTang" ? 0.9 : asset.id === "clownfish" ? 1.32 : asset.id === "yellowTang" ? 1.17 : asset.id === "silverTang" ? 1.1 : 1;
         runtimes.set(object.id, {
@@ -785,7 +802,7 @@ export function CoralReef() {
             runtime.travelDir = seeded(now * 0.001 + runtime.phase, 117) > 0.5 ? 1 : -1;
             const offscreen = runtime.width * 0.8 + 54;
             runtime.position.set(runtime.travelDir > 0 ? -offscreen : engine.width + offscreen, (0.13 + seeded(now * 0.001 + runtime.phase, 119) * 0.66) * engine.height);
-            runtime.velocity.set(runtime.travelDir * minBase * 0.04, 0);
+            runtime.velocity.set(runtime.travelDir * minBase * 0.04 * globalAnimalSpeedRef.current, 0);
             runtime.yaw = runtime.travelDir;
             runtime.desiredYaw = runtime.travelDir;
             runtime.eatenTimer = 0;
@@ -806,7 +823,7 @@ export function CoralReef() {
           }
           const offscreen = runtime.width * 0.7 + 44;
           runtime.position.set(runtime.travelDir > 0 ? -offscreen : engine.width + offscreen, (0.14 + seeded(now * 0.00019 + runtime.phase, 167) * 0.52) * engine.height);
-          runtime.velocity.set(runtime.travelDir * engine.width / 18, 0);
+          runtime.velocity.set(runtime.travelDir * engine.width / 18 * globalAnimalSpeedRef.current, 0);
           runtime.target.set(runtime.travelDir > 0 ? 1.18 : -0.18, runtime.position.y / engine.height);
           runtime.targetTimer = 8;
           runtime.mesh.visible = true;
@@ -814,7 +831,8 @@ export function CoralReef() {
 
         if (moving) {
           const speedRange = asset.speedRange;
-          const baseCruise = (speedRange[0] + (speedRange[1] - speedRange[0]) * (0.35 + object.depth * 0.42)) * minBase * object.speed;
+          const speedScale = globalAnimalSpeedRef.current;
+          const baseCruise = (speedRange[0] + (speedRange[1] - speedRange[0]) * (0.35 + object.depth * 0.42)) * minBase * object.speed * speedScale;
           const heavySwimmer = asset.id === "reefShark" || asset.behavior === "whale";
           runtime.moodTimer -= dt;
           if (runtime.moodTimer <= 0) {
@@ -833,7 +851,7 @@ export function CoralReef() {
             : (runtime.moodTarget > runtime.moodSpeed ? 0.7 : 0.46);
           runtime.moodSpeed += (runtime.moodTarget - runtime.moodSpeed) * (1 - Math.exp(-dt * moodEase));
           const personalityCruise = baseCruise * runtime.tempoScale * runtime.moodSpeed;
-          const cruise = asset.id === "reefShark" ? personalityCruise * 1.22 : isAmbientWhale ? Math.max(personalityCruise * 1.4, engine.width / 18) : asset.behavior === "whale" ? Math.max(personalityCruise * 1.4, minBase * 0.03 * object.speed * runtime.moodSpeed) : personalityCruise;
+          const cruise = asset.id === "reefShark" ? personalityCruise * 1.22 : isAmbientWhale ? Math.max(personalityCruise * 1.4, engine.width / 18 * speedScale) : asset.behavior === "whale" ? Math.max(personalityCruise * 1.4, minBase * 0.03 * object.speed * runtime.moodSpeed * speedScale) : personalityCruise;
           let seekingFood = false;
 
           if (asset.behavior === "jellyfish") {
@@ -999,7 +1017,7 @@ export function CoralReef() {
             // Giving every placed animal the same wide arc also keeps freshly added
             // fish from snapping around at the edge of their activity range.
             const heavySwimmer = asset.id === "reefShark" || asset.behavior === "turtle" || asset.behavior === "whale";
-            const turnDuration = heavySwimmer ? 3.05 : 2.45;
+            const turnDuration = (heavySwimmer ? 3.05 : 2.45) / Math.sqrt(speedScale);
             runtime.turn = Math.min(1, runtime.turn + dt / turnDuration);
             const eased = runtime.turn * runtime.turn * (3 - 2 * runtime.turn);
             const startAngle = runtime.turnStartFace > 0 ? 0 : Math.PI;
@@ -1059,7 +1077,8 @@ export function CoralReef() {
         material.uniforms.uAmp.value = asset.kind === "animal"
           ? (asset.id === "reefShark" ? 0.055 + fleeBoost * 0.025 : asset.behavior === "whale" ? 0.036 + fleeBoost * 0.014 : asset.behavior === "turtle" ? 0.04 : asset.behavior === "jellyfish" ? 0.058 : 0.011 + visualSpeed * 0.22 + fleeBoost * 0.035) * runtime.swimPower
           : (asset.behavior === "bottom" ? 0.018 : 0.01);
-        material.uniforms.uFreq.value = (asset.id === "reefShark" ? 4.4 + fleeBoost * 1.55 : asset.behavior === "whale" ? 1.12 + fleeBoost * 0.42 : asset.behavior === "turtle" ? 1.55 : asset.behavior === "jellyfish" ? 2.05 + fleeBoost * 0.65 : 2.1 + visualSpeed * 42 + fleeBoost * 3.2) * runtime.swimRate;
+        const movementTempo = asset.kind === "animal" ? 0.5 + globalAnimalSpeedRef.current * 0.5 : 1;
+        material.uniforms.uFreq.value = (asset.id === "reefShark" ? 4.4 + fleeBoost * 1.55 : asset.behavior === "whale" ? 1.12 + fleeBoost * 0.42 : asset.behavior === "turtle" ? 1.55 : asset.behavior === "jellyfish" ? 2.05 + fleeBoost * 0.65 : 2.1 + visualSpeed * 42 + fleeBoost * 3.2) * runtime.swimRate * movementTempo;
         material.uniforms.uTint.value.setRGB(0.66 + object.depth * 0.34, 0.82 + object.depth * 0.18, 1);
         let sceneOpacity = 1;
         if (asset.kind === "animal" && !isAmbientWhale) {
@@ -1130,7 +1149,7 @@ export function CoralReef() {
               shark.huntCooldown = 1.35;
               // Eating never stops or turns the shark: keep its nose moving
               // forward and damp only the incidental vertical wobble.
-              shark.velocity.x = shark.travelDir * Math.max(Math.abs(shark.velocity.x), minBase * 0.026);
+              shark.velocity.x = shark.travelDir * Math.max(Math.abs(shark.velocity.x), minBase * 0.026 * globalAnimalSpeedRef.current);
               shark.velocity.y *= 0.55;
               shark.targetTimer = Math.max(shark.targetTimer, 2.4);
               const bloom: BloodBloom = { id: crypto.randomUUID(), x: fish.position.x / engine.width, y: fish.position.y / engine.height, seed: Math.random() * 100 };
@@ -1354,6 +1373,50 @@ export function CoralReef() {
     source.flee = 1;
   }, []);
 
+  const stirWater = useCallback((fromX: number, fromY: number, toX: number, toY: number) => {
+    const engine = engineRef.current;
+    if (!engine) return;
+    const dx = toX - fromX;
+    const dy = toY - fromY;
+    const length = Math.hypot(dx, dy);
+    if (length < 5) return;
+
+    const id = crypto.randomUUID();
+    const trail: WaterTrail = {
+      id,
+      x: ((fromX + toX) * 0.5 / engine.width) * 100,
+      y: ((fromY + toY) * 0.5 / engine.height) * 100,
+      length: Math.min(92, length + 18),
+      angle: Math.atan2(dy, dx) * 180 / Math.PI,
+      seed: Math.random(),
+    };
+    setWaterTrails((current) => [...current.slice(-31), trail]);
+    window.setTimeout(() => setWaterTrails((current) => current.filter((item) => item.id !== id)), 920);
+
+    const segmentLengthSq = Math.max(1, dx * dx + dy * dy);
+    const minBase = Math.min(engine.width, engine.height * 1.45);
+    const radius = Math.max(54, minBase * 0.14);
+    const now = performance.now();
+    const nearby = sceneObjectsRef.current.flatMap((object) => {
+      if (object.locked || ASSETS[object.type].kind !== "animal") return [];
+      const runtime = engine.runtimes.get(object.id);
+      if (!runtime || !runtime.mesh.visible || runtime.eatenTimer > 0) return [];
+      const projection = clamp(((runtime.position.x - fromX) * dx + (runtime.position.y - fromY) * dy) / segmentLengthSq, 0, 1);
+      const closestX = fromX + dx * projection;
+      const closestY = fromY + dy * projection;
+      const distance = Math.hypot(runtime.position.x - closestX, runtime.position.y - closestY);
+      const depthRadius = radius * (0.72 + object.depth * 0.34);
+      return distance < depthRadius ? [{ object, closestX, closestY, distance }] : [];
+    }).sort((a, b) => a.distance - b.distance).slice(0, 5);
+
+    for (const { object, closestX, closestY } of nearby) {
+      const lastFlee = trailFleeRef.current.get(object.id) ?? 0;
+      if (now - lastFlee < 230) continue;
+      trailFleeRef.current.set(object.id, now);
+      startFlee(object, closestX, closestY);
+    }
+  }, [startFlee]);
+
   const pointerPosition = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     return { x: event.clientX - rect.left, y: event.clientY - rect.top, nx: (event.clientX - rect.left) / rect.width, ny: (event.clientY - rect.top) / rect.height };
@@ -1377,24 +1440,56 @@ export function CoralReef() {
       event.currentTarget.setPointerCapture(event.pointerId);
       return;
     }
-    if (hit && ASSETS[hit.type].kind === "animal") startFlee(hit, point.x, point.y);
-    else makeBubbles(point.nx * 100, point.ny * 100);
+    viewGestureRef.current = {
+      pointerId: event.pointerId,
+      startX: point.x,
+      startY: point.y,
+      lastX: point.x,
+      lastY: point.y,
+      lastTrailAt: performance.now(),
+      moved: false,
+      hitId: hit?.id ?? null,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const drag = dragRef.current;
-    if (!drag) return;
     const point = pointerPosition(event);
-    setObjects((current) => current.map((object) => object.id === drag.id ? { ...object, x: clamp(point.nx, 0.02, 0.98), y: clamp(point.ny, 0.04, 0.98) } : object));
+    if (drag) {
+      setObjects((current) => current.map((object) => object.id === drag.id ? { ...object, x: clamp(point.nx, 0.02, 0.98), y: clamp(point.ny, 0.04, 0.98) } : object));
+      return;
+    }
+    const gesture = viewGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId || editRef.current) return;
+    const totalDistance = Math.hypot(point.x - gesture.startX, point.y - gesture.startY);
+    const stepDistance = Math.hypot(point.x - gesture.lastX, point.y - gesture.lastY);
+    const now = performance.now();
+    if (totalDistance < 8 || stepDistance < 10 || now - gesture.lastTrailAt < 24) return;
+    gesture.moved = true;
+    stirWater(gesture.lastX, gesture.lastY, point.x, point.y);
+    gesture.lastX = point.x;
+    gesture.lastY = point.y;
+    gesture.lastTrailAt = now;
   };
 
-  const onPointerUp = () => {
+  const onPointerUp = (event: ReactPointerEvent<HTMLCanvasElement>, cancelled = false) => {
     const drag = dragRef.current;
-    if (!drag) return;
-    historyRef.current.push(drag.snapshot);
-    futureRef.current = [];
-    setHistoryTick((tick) => tick + 1);
-    dragRef.current = null;
+    if (drag) {
+      historyRef.current.push(drag.snapshot);
+      futureRef.current = [];
+      setHistoryTick((tick) => tick + 1);
+      dragRef.current = null;
+      return;
+    }
+    const gesture = viewGestureRef.current;
+    if (!gesture || gesture.pointerId !== event.pointerId) return;
+    viewGestureRef.current = null;
+    if (cancelled || gesture.moved) return;
+    const point = pointerPosition(event);
+    const hit = gesture.hitId ? sceneObjectsRef.current.find((object) => object.id === gesture.hitId) ?? null : hitAt(point.x, point.y, event.pointerType === "touch");
+    if (hit && ASSETS[hit.type].kind === "animal") startFlee(hit, point.x, point.y);
+    else makeBubbles(point.nx * 100, point.ny * 100);
   };
 
   const updateSelected = useCallback((patch: Partial<ReefObject>, saveHistory = true) => {
@@ -1436,7 +1531,7 @@ export function CoralReef() {
   }, [deleteSelected, updateSelected]);
 
   const downloadJson = () => {
-    const blob = new Blob([JSON.stringify({ version: 2, objects, settings: { animalPopulation: globalAnimalPopulation } }, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ version: 2, objects, settings: { animalPopulation: globalAnimalPopulation, animalSpeed: globalAnimalSpeed } }, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob); const anchor = document.createElement("a");
     anchor.href = url; anchor.download = `나의-산호초-${new Date().toISOString().slice(0, 10)}.json`; anchor.click(); URL.revokeObjectURL(url);
     notify("구성 파일을 저장했어요");
@@ -1444,13 +1539,16 @@ export function CoralReef() {
 
   const loadJson = async (file: File) => {
     try {
-      const imported = JSON.parse(await file.text()) as { settings?: { animalPopulation?: unknown } };
+      const imported = JSON.parse(await file.text()) as { settings?: { animalPopulation?: unknown; animalSpeed?: unknown } };
       const parsed = validateImport(imported);
       if (!parsed) throw new Error("invalid");
       checkpoint();
       setObjects(parsed);
       if (typeof imported.settings?.animalPopulation === "number" && Number.isFinite(imported.settings.animalPopulation)) {
         setGlobalAnimalPopulation(clamp(imported.settings.animalPopulation, MIN_ANIMAL_POPULATION_SCALE, MAX_ANIMAL_POPULATION_SCALE));
+      }
+      if (typeof imported.settings?.animalSpeed === "number" && Number.isFinite(imported.settings.animalSpeed)) {
+        setGlobalAnimalSpeed(clamp(imported.settings.animalSpeed, MIN_ANIMAL_SPEED_SCALE, MAX_ANIMAL_SPEED_SCALE));
       }
       setSelectedId(null); notify("구성을 불러왔어요");
     } catch { notify("올바른 산호초 구성 파일이 아니에요"); }
@@ -1588,8 +1686,18 @@ export function CoralReef() {
       </picture>
       <div className="reef-caustics" aria-hidden="true"><i /><i /><i /></div>
       <div className="reef-plankton" aria-hidden="true">{Array.from({ length: 18 }, (_, index) => <i key={index} style={{ "--i": index } as CSSProperties} />)}</div>
-      <canvas ref={canvasRef} className="reef-webgl" aria-label="헤엄치는 산호초 바다" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} />
+      <canvas ref={canvasRef} className="reef-webgl" aria-label="헤엄치는 산호초 바다" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={(event) => onPointerUp(event, true)} />
       <div className="reef-ccd-overlay" aria-hidden="true"><i className="ccd-bloom" /><i className="ccd-noise" /><i className="ccd-blocks" /><i className="ccd-vignette" /></div>
+
+      <div className="reef-water-trails" aria-hidden="true">
+        {waterTrails.map((trail) => <i key={trail.id} style={{
+          "--x": `${trail.x}%`,
+          "--y": `${trail.y}%`,
+          "--length": `${trail.length}px`,
+          "--angle": `${trail.angle}deg`,
+          "--drift": `${(trail.seed - 0.5) * 8}px`,
+        } as CSSProperties} />)}
+      </div>
 
       <div className="reef-bubbles" aria-hidden="true">
         {bubbles.flatMap((group) => Array.from({ length: group.count }, (_, index) => {
@@ -1691,9 +1799,17 @@ export function CoralReef() {
             </a>
             <a href={MAC_WALLPAPER_DOWNLOAD_URL} target="_blank" rel="noreferrer" aria-label="Mac용 산호초 바탕화면 다운로드">
               <span className="reef-download-os"><Icon name="apple" /></span>
-              <span><b>Mac</b><small>Apple Silicon</small></span>
+              <span><b>Mac</b><small>Apple Silicon · 첫 실행 안내 확인</small></span>
               <span className="reef-download-arrow"><Icon name="download" /></span>
             </a>
+          </div>
+          <div className="reef-mac-open-guide" aria-label="Mac 첫 실행 방법">
+            <strong>Mac에서 처음 열 때</strong>
+            <ol>
+              <li>경고창에서 <b>완료</b>를 눌러 닫기</li>
+              <li><b>응용 프로그램</b>에서 앱을 Control-클릭</li>
+              <li><b>열기</b>를 누른 뒤 한 번 더 <b>열기</b></li>
+            </ol>
           </div>
           <div className="reef-download-shortcuts" aria-label="바탕화면 앱 단축키">
             <strong>설치 후 단축키</strong>
@@ -1721,7 +1837,11 @@ export function CoralReef() {
             <span><b>전체 생물 수</b><output>{Math.round(globalAnimalPopulation * 100)}% · {visibleAnimalCount}마리</output></span>
             <input aria-label="전체 생물 수" type="range" min={MIN_ANIMAL_POPULATION_SCALE} max={MAX_ANIMAL_POPULATION_SCALE} step="0.05" value={globalAnimalPopulation} onChange={(event) => setGlobalAnimalPopulation(Number(event.target.value))} />
           </label>
-          <p>CCD 효과는 색을 유지한 채 화질만 바꾸고, 크기와 생물 수는 즉시 전체 바다에 반영돼요.</p>
+          <label className="reef-camera-strength reef-camera-speed">
+            <span><b>전체 물고기 속도</b><output>{Math.round(globalAnimalSpeed * 100)}%</output></span>
+            <input aria-label="전체 물고기 속도" type="range" min={MIN_ANIMAL_SPEED_SCALE} max={MAX_ANIMAL_SPEED_SCALE} step="0.05" value={globalAnimalSpeed} onChange={(event) => setGlobalAnimalSpeed(Number(event.target.value))} />
+          </label>
+          <p>CCD 효과는 색을 유지한 채 화질만 바꾸고, 크기·생물 수·유영 속도는 즉시 전체 바다에 반영돼요.</p>
         </aside>}
 
         {selected && editMode && <aside className="reef-panel reef-inspector" data-reef-ui>
@@ -1763,7 +1883,7 @@ export function CoralReef() {
           </div>
         </aside>}
 
-        {hint && <div className="reef-hint" data-reef-ui>빈 물은 거품 · 물고기는 앞으로 휙 · 먹이를 놓으면 모여요</div>}
+        {hint && <div className="reef-hint" data-reef-ui>빈 물은 거품 · 물고기는 앞으로 휙 · 물을 드래그하면 물길을 피해요</div>}
         {addType && <div className="reef-placement" data-reef-ui><img src={ASSETS[addType].file} alt="" /><span>놓을 곳을 탭하세요</span></div>}
         {feedingMode && <div className="reef-feed-hint" data-reef-ui><Icon name="food" /><span>먹이를 놓을 곳을 탭하세요</span></div>}
       </>}

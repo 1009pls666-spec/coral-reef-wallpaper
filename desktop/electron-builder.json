@@ -5,6 +5,7 @@
   "artifactName": "coral-reef-wallpaper-${version}-${os}-${arch}.${ext}",
   "asar": true,
   "npmRebuild": false,
+  "afterPack": "desktop/after-pack.cjs",
   "directories": {
     "output": "release-wallpaper",
     "buildResources": "desktop/build"

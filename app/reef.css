@@ -59,6 +59,13 @@
 .is-editing .reef-webgl { cursor: grab; }
 .is-editing .reef-webgl:active { cursor: grabbing; }
 
+.reef-water-trails { position: absolute; z-index: 69; inset: 0; overflow: hidden; pointer-events: none; mix-blend-mode: screen; }
+.reef-water-trails i { position: absolute; left: var(--x); top: var(--y); width: var(--length); height: 14px; transform: translate(-50%,-50%) rotate(var(--angle)); }
+.reef-water-trails i::before, .reef-water-trails i::after { content: ""; position: absolute; left: 0; width: 100%; height: 2px; border-radius: 50%; background: linear-gradient(90deg, transparent 0%, rgba(192,245,250,.08) 12%, rgba(226,253,255,.52) 48%, rgba(146,229,240,.18) 78%, transparent 100%); filter: blur(.35px); transform-origin: 50% 50%; animation: reef-water-current .9s cubic-bezier(.18,.58,.25,1) both; }
+.reef-water-trails i::before { top: 3px; }
+.reef-water-trails i::after { top: calc(9px + var(--drift)); opacity: .5; animation-delay: .04s; }
+@keyframes reef-water-current { 0% { opacity: 0; transform: translateX(-7px) scaleX(.36); } 14% { opacity: .86; } 60% { opacity: .42; } 100% { opacity: 0; transform: translateX(12px) scaleX(1.12); } }
+
 .reef-selection { --selection-size: 15vmin; position: absolute; z-index: 76; width: clamp(46px, var(--selection-size), 360px); aspect-ratio: 1.9; border: 1px dashed rgba(221,250,255,.86); border-radius: 50%; box-shadow: 0 0 0 3px rgba(3,45,65,.28), inset 0 0 0 1px rgba(255,255,255,.13); transform: translate(-50%,-50%); pointer-events: none; }
 .reef-selection.plant { aspect-ratio: .78; transform: translate(-50%,-78%); }
 .reef-selection.decor { aspect-ratio: 1.35; transform: translate(-50%,-67%); }
@@ -128,6 +135,10 @@
 .reef-download-options small { color: rgba(168,221,230,.68); font-size: 8px; }
 .reef-download-arrow { color: rgba(205,244,249,.65); }
 .reef-download-arrow .reef-icon { width: 16px; height: 16px; }
+.reef-mac-open-guide { margin-top: 9px; padding: 9px 10px; border: 1px solid rgba(255,220,151,.18); border-radius: 12px; color: rgba(237,250,251,.74); background: rgba(59,48,18,.18); }
+.reef-mac-open-guide > strong { display: block; margin-bottom: 5px; color: rgba(255,235,187,.88); font-size: 9px; }
+.reef-mac-open-guide ol { margin: 0; padding-left: 16px; display: grid; gap: 3px; font-size: 7px; line-height: 1.45; }
+.reef-mac-open-guide b { color: rgba(255,246,222,.9); }
 .reef-download-shortcuts { margin-top: 9px; padding: 9px 10px; display: grid; gap: 6px; border: 1px solid rgba(219,248,252,.1); border-radius: 12px; background: rgba(2,29,43,.22); }
 .reef-download-shortcuts > strong { color: rgba(226,250,253,.78); font-size: 9px; }
 .reef-download-shortcuts > span { display: grid; grid-template-columns: auto auto auto auto auto 1fr; align-items: center; gap: 3px; color: rgba(221,248,252,.66); font-size: 7px; }
@@ -146,6 +157,7 @@
 .reef-camera-strength.is-disabled { opacity: .4; }
 .reef-camera-size { margin-top: 4px; border-top: 1px solid rgba(223,249,253,.1); }
 .reef-camera-population { margin-top: 4px; border-top: 1px solid rgba(223,249,253,.1); }
+.reef-camera-speed { margin-top: 4px; border-top: 1px solid rgba(223,249,253,.1); }
 .reef-camera-strength > span { display: flex; align-items: center; justify-content: space-between; }
 .reef-camera-strength output { color: #9be7ee; font-size: 10px; font-variant-numeric: tabular-nums; }
 .reef-camera-strength input { width: 100%; accent-color: #65d4df; cursor: pointer; }
@@ -213,5 +225,6 @@
   .reef-background, .reef-caustics i, .reef-plankton i, .reef-ccd-overlay .ccd-noise { animation: none !important; }
   .reef-plankton { display: none; }
   .reef-bubbles i { animation-duration: .9s !important; }
+  .reef-water-trails i::before, .reef-water-trails i::after { animation-duration: .45s !important; }
   .reef-food-cloud i { animation-duration: 3.2s !important; }
 }

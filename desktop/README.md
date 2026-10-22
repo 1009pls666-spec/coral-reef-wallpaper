@@ -40,6 +40,8 @@ macOS DMG/ZIP:
 npm run desktop:dist:mac
 ```
 
+Apple Developer Program에 가입하지 않은 빌드는 자동으로 임시 서명됩니다. 다운로드한 Mac에서 처음 열 때는 Finder의 `응용 프로그램` 폴더에서 앱을 `Control`-클릭하고 `열기`를 선택한 뒤, 확인창에서 다시 `열기`를 눌러야 합니다. 이후에는 일반적으로 실행할 수 있습니다.
+
 Windows NSIS 설치 파일/포터블 EXE:
 
 ```bash
