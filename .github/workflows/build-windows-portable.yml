@@ -9,7 +9,7 @@ on:
       - .github/workflows/build-windows-portable.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-windows:
@@ -35,9 +35,19 @@ jobs:
         run: npm run desktop:build
       - name: Build single portable EXE
         run: npx electron-builder --config desktop/electron-builder.json --win portable --x64 --publish never
-      - name: Upload portable EXE
+      - name: Upload portable EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: coral-reef-wallpaper-windows-exe
           path: release-wallpaper/coral-reef-wallpaper-0.1.0-win-x64.exe
           if-no-files-found: error
+      - name: Publish public Windows download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.2.2
+          name: Coral Reef Wallpaper for Windows v0.2.2
+          body: |
+            Windows용 산호초 움직이는 바탕화면 앱입니다.
+            EXE 파일 하나를 내려받아 더블클릭하면 됩니다.
+          files: release-wallpaper/coral-reef-wallpaper-0.1.0-win-x64.exe
+          make_latest: true
