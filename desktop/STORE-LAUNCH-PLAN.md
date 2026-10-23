@@ -1,27 +1,30 @@
 # Microsoft Store 첫 출시 계획
 
-## 1단계: 20명 무료 베타
+## 1단계: 사업자 없이 20명 무료 비공개 베타
 
-- 정가: 4,900원
-- 판매 형태: 1회 구매, 구독 없음
-- 노출: Store 검색에서 발견되지 않게 설정
-- 취득: 상품 취득 중지. 기존 소유자나 프로모션 코드 보유자만 설치 가능
-- 무료 인원: 일회용 프로모션 코드 20개
-- 코드 주문명: `산호초 첫 바다 20명`
-- 만료: 생성일로부터 30일
+- 계정: Microsoft Store Individual developer
+- 가격: Free
+- 노출: `Private audience`
+- 테스터: Microsoft 계정 이메일 20명을 명단에 추가
+- 결과: 명단의 테스터만 Store 상품을 보고 무료로 설치 가능
 
-Partner Center의 `Pricing and availability > Discoverability`에서 `Make this product available but not discoverable in the Store`를 선택하고, `Stop acquisition: Any customer with a direct link...` 옵션을 선택한다.
+Partner Center의 `Pricing and availability > Visibility`에서 `Private audience`를 선택한다. 테스터는 반드시 Windows의 Microsoft Store에 명단에 등록된 것과 같은 Microsoft 계정으로 로그인해야 한다.
 
-앱이 심사를 통과한 뒤 `Attract > Promo codes > Order codes`에서 일회용 코드 20개를 생성한다. 각 테스터에게 서로 다른 코드 URL 하나씩을 전달한다.
+앱을 한 번 받은 테스터의 접근권은 회수할 수 없다. 해당 테스터는 후속 업데이트도 계속 받는다.
+
+## 업로드 순서
+
+1. `https://storedeveloper.microsoft.com`에서 무료 Individual developer 계정을 만든다.
+2. Partner Center에서 `New product > MSIX or PWA app`을 선택한다.
+3. `나의 산호초 바탕화면`을 앱 이름으로 예약한다.
+4. Product identity의 Name, Publisher, Publisher display name으로 GitHub Actions의 `Build Microsoft Store Package`를 실행한다.
+5. 생성된 APPX를 `Packages`에 업로드한다.
+6. 가격을 Free로, Visibility를 Private audience로 지정하고 20명의 Microsoft 계정 이메일을 넣는다.
+7. 설명, 스크린샷, 연령 등급을 완성한 뒤 인증을 요청한다.
 
 ## 2단계: 유료 공개 출시
 
-20명의 설치·삭제, 작업 표시줄, 렉, 자동 실행, 편집 복원 테스트를 완료한 뒤:
-
-1. 심각한 오류를 수정한 새 패키지를 Store에 제출한다.
-2. Discoverability를 일반 공개로 변경한다.
-3. 4,900원으로 유료 판매를 시작한다.
-4. 기존 20명은 계속 무료로 사용하고 이후 업데이트도 받는다.
+20명의 설치·삭제, 작업 표시줄, 렉, 자동 실행, 편집 복원 테스트를 완료한 뒤 사업자를 준비한다. Microsoft는 Individual을 Company로 직접 변경하지 않으므로, 유료 출시는 Company 계정에서 새로 제출하는 것을 기본 계획으로 한다.
 
 ## 베타 테스터에게 받을 항목
 

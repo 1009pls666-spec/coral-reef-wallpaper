@@ -36,4 +36,4 @@ npm run desktop:dist:store
 
 Store 상품이 승인되기 전에는 기존 GitHub EXE 다운로드 링크를 제거하지 않는다. 승인 후에 웹 버튼을 Store 링크로 교체한다.
 
-첫 출시는 Store에서 숨긴 상태로 심사를 통과한 뒤, 일회용 프로모션 코드 20개로만 무료 배포한다. 자세한 설정은 [`STORE-LAUNCH-PLAN.md`](./STORE-LAUNCH-PLAN.md)를 따른다.
+첫 출시는 Individual 계정의 Free + Private audience로 진행하고, 20명의 Microsoft 계정만 베타 대상으로 등록한다. 자세한 설정은 [`STORE-LAUNCH-PLAN.md`](./STORE-LAUNCH-PLAN.md)를 따른다.
