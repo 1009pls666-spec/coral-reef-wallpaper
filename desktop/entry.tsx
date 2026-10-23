@@ -8,6 +8,7 @@ declare global {
     reefDesktop?: {
       platform: string;
       enterWallpaper: () => void;
+      stopWallpaper: () => void;
       quit: () => void;
     };
   }
@@ -16,6 +17,7 @@ declare global {
 const params = new URLSearchParams(window.location.search);
 const isEditor = params.get("mode") === "editor";
 document.documentElement.dataset.desktop = isEditor ? "editor" : "wallpaper";
+document.documentElement.dataset.platform = window.reefDesktop?.platform ?? "web";
 const shortcutModifier = window.reefDesktop?.platform === "darwin" ? "⌘" : "Ctrl";
 
 function ShortcutRows() {
@@ -31,9 +33,22 @@ function DesktopShell() {
       <CoralReef />
       {isEditor && window.reefDesktop && (
         <aside className="desktop-wallpaper-controls" aria-label="바탕화면 앱 제어">
-          <button type="button" onClick={() => window.reefDesktop?.enterWallpaper()}>
-            바탕화면으로 돌아가기
-          </button>
+          <div className="desktop-wallpaper-actions">
+            <button type="button" onClick={() => window.reefDesktop?.enterWallpaper()}>
+              바탕화면으로 돌아가기
+            </button>
+            <button
+              type="button"
+              className="stop-wallpaper"
+              onClick={() => {
+                if (window.confirm("이 바탕화면을 중지할까요? 로그인할 때 자동 실행도 꺼집니다.")) {
+                  window.reefDesktop?.stopWallpaper();
+                }
+              }}
+            >
+              바탕화면으로 사용하지 않기
+            </button>
+          </div>
           <ShortcutRows />
         </aside>
       )}

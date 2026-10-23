@@ -40,7 +40,7 @@ macOS DMG/ZIP:
 npm run desktop:dist:mac
 ```
 
-Apple Developer Program에 가입하지 않은 빌드는 자동으로 임시 서명됩니다. 다운로드한 Mac에서 처음 열 때는 Finder의 `응용 프로그램` 폴더에서 앱을 `Control`-클릭하고 `열기`를 선택한 뒤, 확인창에서 다시 `열기`를 눌러야 합니다. 이후에는 일반적으로 실행할 수 있습니다.
+Apple Developer Program에 가입하지 않은 빌드는 자동으로 임시 서명됩니다. 배포용 간편설치 ZIP의 `설치.command`는 앱을 사용자 `Applications` 폴더에 복사하고 해당 앱의 격리 속성만 제거한 뒤 실행합니다. `설치.command` 자체가 차단되면 터미널에 `bash `를 입력하고 파일을 끌어 놓아 실행합니다.
 
 Windows NSIS 설치 파일/포터블 EXE:
 
@@ -49,6 +49,19 @@ npm run desktop:dist:win
 ```
 
 결과물은 `release-wallpaper/`에 생성됩니다. Windows 설치 파일도 공개 배포 시 코드 서명을 권장합니다.
+
+## 직접 설치용과 AI 설치용 ZIP
+
+최신 Mac/Windows 앱 폴더를 만든 뒤 다음 명령으로 네 가지 ZIP을 생성합니다.
+
+```bash
+npm run desktop:install-bundles
+```
+
+- `*-direct.zip`: ChatGPT 없이도 사람이 설치할 수 있는 안내와 실행 스크립트
+- `*-ai.zip`: 위 내용에 로컬 컴퓨터 제어형 AI가 읽을 `AI-INSTALL.md`를 추가한 버전
+
+일반 무료 웹 채팅은 로컬 컴퓨터를 조작할 수 없으므로 직접 설치용 ZIP을 사용합니다.
 
 ## macOS 정식 서명과 공증
 

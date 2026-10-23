@@ -1,4 +1,4 @@
-const CACHE_NAME = "coral-reef-mobile-v1";
+const CACHE_NAME = "coral-reef-mobile-v15";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -39,16 +39,23 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  const networkFirst = ["script", "style", "worker"].includes(event.request.destination);
+  if (networkFirst) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) void caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
-        if (response.ok) {
-          const copy = response.clone();
-          void caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-        }
-        return response;
-      });
-    })
+    caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
+      if (response.ok) void caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
+      return response;
+    }))
   );
 });

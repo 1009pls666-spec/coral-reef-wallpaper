@@ -20,7 +20,9 @@
 .coral-reef button:focus-visible { outline: 2px solid #dffaff; outline-offset: 3px; }
 .reef-filter-defs { position: absolute; width: 0; height: 0; pointer-events: none; }
 .reef-scene-stage { position: absolute; z-index: 0; inset: 0; overflow: hidden; isolation: isolate; transform: translateZ(0); }
-.is-ccd .reef-scene-stage { filter: url(#reef-ccd-filter) brightness(var(--ccd-brightness)) contrast(var(--ccd-contrast)) saturate(var(--ccd-saturation)) blur(var(--ccd-softness)); }
+.is-ccd .reef-scene-stage { filter: brightness(var(--ccd-brightness)) contrast(var(--ccd-contrast)) saturate(var(--ccd-saturation)) blur(var(--ccd-softness)); }
+html[data-platform="win32"][data-desktop="wallpaper"] .is-ccd .reef-scene-stage { filter: brightness(var(--ccd-brightness)) contrast(var(--ccd-contrast)) saturate(var(--ccd-saturation)); }
+html[data-platform="win32"][data-desktop="wallpaper"] .reef-ccd-overlay .ccd-noise { animation: none; }
 
 .reef-background { position: absolute; z-index: -10; inset: -1.5%; overflow: hidden; pointer-events: none; animation: reef-camera-drift 20s ease-in-out infinite alternate; }
 .reef-background img { width: 100%; height: 100%; display: block; object-fit: cover; filter: saturate(1.08) contrast(1.02) brightness(1.04) hue-rotate(-3deg); }
@@ -56,6 +58,7 @@
 @keyframes reef-ccd-noise { 0%,42% { transform: translate3d(-1.5%,1%,0); } 43%,82% { transform: translate3d(1%,-1.5%,0); } 83%,100% { transform: translate3d(-.5%,-.5%,0); } }
 
 .reef-webgl { position: absolute; z-index: 10; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; touch-action: none; }
+.is-webgl-fallback .reef-webgl { display: none; }
 .is-editing .reef-webgl { cursor: grab; }
 .is-editing .reef-webgl:active { cursor: grabbing; }
 
@@ -123,22 +126,22 @@
 .reef-save small { color: rgba(159,216,226,.7); font-size: 8px; font-weight: 500; }
 .reef-save .danger, .reef-actions .danger { color: #ffbaa8; }
 
-.reef-desktop-download { top: calc(max(14px, env(safe-area-inset-top)) + 50px); right: max(14px, env(safe-area-inset-right)); width: min(292px, calc(100vw - 28px)); padding: 13px; border-radius: 17px; }
+.reef-desktop-download { top: calc(max(14px, env(safe-area-inset-top)) + 50px); right: max(14px, env(safe-area-inset-right)); width: min(350px, calc(100vw - 28px)); max-height: calc(100svh - 76px); padding: 13px; overflow: auto; border-radius: 17px; }
 .reef-desktop-download > p { margin: 12px 1px 11px; color: rgba(211,240,245,.72); font-size: 10px; line-height: 1.5; }
-.reef-download-options { display: grid; gap: 7px; }
-.reef-download-options a { min-height: 62px; padding: 9px 10px; display: grid; grid-template-columns: 39px 1fr 25px; align-items: center; gap: 9px; border: 1px solid rgba(219,248,252,.12); border-radius: 13px; color: #f0fcff; background: rgba(126,220,231,.065); text-decoration: none; transition: transform .18s, border-color .18s, background .18s; }
+.reef-download-options { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.reef-download-options a { min-width: 0; min-height: 62px; padding: 10px 11px; display: grid; grid-template-columns: 36px 1fr 19px; align-items: center; gap: 9px; border: 1px solid rgba(163,238,246,.28); border-radius: 13px; color: #f0fcff; background: rgba(100,215,228,.12); text-decoration: none; transition: transform .18s, border-color .18s, background .18s; }
 .reef-download-options a:hover, .reef-download-options a:focus-visible { border-color: rgba(151,235,244,.46); background: rgba(109,218,229,.14); transform: translateY(-1px); outline: none; }
-.reef-download-os { width: 39px; height: 39px; display: grid; place-items: center; border-radius: 11px; color: #dffbff; background: rgba(208,248,252,.1); }
-.reef-download-os .reef-icon { width: 21px; height: 21px; }
+.reef-download-os { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 9px; color: #dffbff; background: rgba(208,248,252,.1); }
+.reef-download-os .reef-icon { width: 18px; height: 18px; }
 .reef-download-options a > span:nth-child(2) { display: grid; gap: 3px; }
-.reef-download-options b { font-size: 12px; letter-spacing: -.02em; }
-.reef-download-options small { color: rgba(168,221,230,.68); font-size: 8px; }
+.reef-download-options b { overflow: hidden; font-size: 10px; letter-spacing: -.02em; text-overflow: ellipsis; }
+.reef-download-options small { color: rgba(168,221,230,.68); font-size: 7px; line-height: 1.2; }
 .reef-download-arrow { color: rgba(205,244,249,.65); }
 .reef-download-arrow .reef-icon { width: 16px; height: 16px; }
-.reef-mac-open-guide { margin-top: 9px; padding: 9px 10px; border: 1px solid rgba(255,220,151,.18); border-radius: 12px; color: rgba(237,250,251,.74); background: rgba(59,48,18,.18); }
-.reef-mac-open-guide > strong { display: block; margin-bottom: 5px; color: rgba(255,235,187,.88); font-size: 9px; }
-.reef-mac-open-guide ol { margin: 0; padding-left: 16px; display: grid; gap: 3px; font-size: 7px; line-height: 1.45; }
-.reef-mac-open-guide b { color: rgba(255,246,222,.9); }
+.reef-windows-install-guide { margin-top: 9px; padding: 9px 10px; border: 1px solid rgba(255,220,151,.18); border-radius: 12px; color: rgba(237,250,251,.74); background: rgba(59,48,18,.18); }
+.reef-windows-install-guide > strong { display: block; margin-bottom: 5px; color: rgba(255,235,187,.88); font-size: 9px; }
+.reef-windows-install-guide ol { margin: 0; padding-left: 16px; display: grid; gap: 3px; font-size: 7px; line-height: 1.45; }
+.reef-windows-install-guide b { color: rgba(255,246,222,.9); }
 .reef-download-shortcuts { margin-top: 9px; padding: 9px 10px; display: grid; gap: 6px; border: 1px solid rgba(219,248,252,.1); border-radius: 12px; background: rgba(2,29,43,.22); }
 .reef-download-shortcuts > strong { color: rgba(226,250,253,.78); font-size: 9px; }
 .reef-download-shortcuts > span { display: grid; grid-template-columns: auto auto auto auto auto 1fr; align-items: center; gap: 3px; color: rgba(221,248,252,.66); font-size: 7px; }

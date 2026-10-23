@@ -88,35 +88,87 @@ function attachToWindowsDesktop(window, bounds) {
 using System;
 using System.Runtime.InteropServices;
 public class ReefWallpaperNative {
+  [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
   public delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
   [DllImport("user32.dll", CharSet=CharSet.Auto)] public static extern IntPtr FindWindow(string cls, string title);
   [DllImport("user32.dll", CharSet=CharSet.Auto)] public static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string cls, string title);
   [DllImport("user32.dll")] public static extern IntPtr SendMessageTimeout(IntPtr hwnd, uint msg, IntPtr w, IntPtr l, uint flags, uint timeout, out IntPtr result);
   [DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
   [DllImport("user32.dll")] public static extern IntPtr SetParent(IntPtr child, IntPtr parent);
+  [DllImport("user32.dll")] public static extern IntPtr GetParent(IntPtr child);
+  [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hwnd);
+  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
+  [DllImport("user32.dll", EntryPoint="GetWindowLongW")] public static extern int GetWindowLong(IntPtr hwnd, int index);
+  [DllImport("user32.dll", EntryPoint="SetWindowLongW")] public static extern int SetWindowLong(IntPtr hwnd, int index, int value);
   [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
 }
 `;
   const command = `${script}
+$ErrorActionPreference = "Stop"
+$child = [IntPtr]${hwnd}
 $progman = [ReefWallpaperNative]::FindWindow("Progman", $null)
+if ($progman -eq [IntPtr]::Zero) { exit 11 }
 $unused = [IntPtr]::Zero
 [void][ReefWallpaperNative]::SendMessageTimeout($progman, 0x052C, [IntPtr]::Zero, [IntPtr]::Zero, 0, 1000, [ref]$unused)
 $worker = [IntPtr]::Zero
+$desktopHost = [IntPtr]::Zero
 $callback = [ReefWallpaperNative+EnumWindowsProc]{ param($top, $param)
   $view = [ReefWallpaperNative]::FindWindowEx($top, [IntPtr]::Zero, "SHELLDLL_DefView", $null)
-  if ($view -ne [IntPtr]::Zero) { $script:worker = [ReefWallpaperNative]::FindWindowEx([IntPtr]::Zero, $top, "WorkerW", $null) }
+  if ($view -ne [IntPtr]::Zero) {
+    $script:desktopHost = $top
+    $script:worker = [ReefWallpaperNative]::FindWindowEx([IntPtr]::Zero, $top, "WorkerW", $null)
+  }
   return $true
 }
 [void][ReefWallpaperNative]::EnumWindows($callback, [IntPtr]::Zero)
-if ($worker -eq [IntPtr]::Zero) { $worker = $progman }
-[void][ReefWallpaperNative]::SetParent([IntPtr]${hwnd}, $worker)
-[void][ReefWallpaperNative]::SetWindowPos([IntPtr]${hwnd}, [IntPtr]1, ${bounds.x}, ${bounds.y}, ${bounds.width}, ${bounds.height}, 0x0010 -bor 0x0040)
+if ($worker -eq [IntPtr]::Zero) {
+  if ($desktopHost -ne [IntPtr]::Zero) { $worker = $desktopHost } else { $worker = $progman }
+}
+if (-not [ReefWallpaperNative]::IsWindow($worker)) { exit 12 }
+$style = [ReefWallpaperNative]::GetWindowLong($child, -16)
+$style = ($style -band (-bnot [int]0x80000000)) -bor 0x40000000
+[void][ReefWallpaperNative]::SetWindowLong($child, -16, $style)
+[void][ReefWallpaperNative]::SetParent($child, $worker)
+if ([ReefWallpaperNative]::GetParent($child) -ne $worker) { exit 13 }
+$parentRect = New-Object ReefWallpaperNative+RECT
+if (-not [ReefWallpaperNative]::GetWindowRect($worker, [ref]$parentRect)) { exit 14 }
+$childX = ${bounds.x} - $parentRect.Left
+$childY = ${bounds.y} - $parentRect.Top
+$positioned = [ReefWallpaperNative]::SetWindowPos($child, [IntPtr]1, $childX, $childY, ${bounds.width}, ${bounds.height}, 0x0010 -bor 0x0040)
+if (-not $positioned) { exit 15 }
+exit 0
 `;
   const result = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", command], {
     windowsHide: true,
     encoding: "utf8",
   });
+  if (result.status !== 0) {
+    console.error(`[reef-desktop] WorkerW attach failed (${result.status}): ${result.stderr || result.stdout || "unknown error"}`);
+  }
   return result.status === 0;
+}
+
+function attachWindowsWallpaperWithRetry(window, bounds, attempt = 0) {
+  if (window.isDestroyed() || mode !== "wallpaper") return;
+  window.setBounds(bounds, false);
+  if (attachToWindowsDesktop(window, bounds)) {
+    window.setOpacity(1);
+    console.log(`[reef-desktop] Windows desktop attached on attempt ${attempt + 1}`);
+    return;
+  }
+  const delays = [320, 760, 1500];
+  if (attempt < delays.length) {
+    setTimeout(() => attachWindowsWallpaperWithRetry(window, bounds, attempt + 1), delays[attempt]);
+    return;
+  }
+  window.hide();
+  console.error("[reef-desktop] Windows desktop attachment failed; hidden to protect desktop icons and taskbar.");
+  if (tray && typeof tray.displayBalloon === "function") {
+    tray.displayBalloon({
+      title: APP_NAME,
+      content: "바탕화면 뒤쪽에 연결하지 못해 화면을 숨겼어요. 트레이 아이콘에서 편집기를 열어 다시 시도해 주세요.",
+    });
+  }
 }
 
 function closeWindows() {
@@ -189,6 +241,7 @@ function createWallpaperWindow(display) {
   const window = new BrowserWindow(commonWindowOptions(bounds, true));
   secureWindow(window);
   window.setIgnoreMouseEvents(true, { forward: false });
+  if (process.platform === "win32") window.setOpacity(0);
   if (process.platform === "darwin") {
     window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: false, skipTransformProcessType: true });
     window.setHiddenInMissionControl(true);
@@ -197,10 +250,7 @@ function createWallpaperWindow(display) {
   window.once("ready-to-show", () => {
     window.showInactive();
     window.setBounds(bounds, false);
-    if (process.platform === "win32" && !attachToWindowsDesktop(window, bounds)) {
-      window.setAlwaysOnTop(false);
-      console.error("[reef-desktop] Windows desktop attachment failed; keeping the click-through fallback window.");
-    }
+    if (process.platform === "win32") attachWindowsWallpaperWithRetry(window, bounds);
     window.webContents.send("reef-desktop:set-paused", paused);
   });
   window.on("close", (event) => {
@@ -267,6 +317,13 @@ function toggleMode() {
   setMode(mode === "wallpaper" ? "editor" : "wallpaper");
 }
 
+function stopUsingWallpaper() {
+  app.setLoginItemSettings({ openAtLogin: false });
+  quitting = true;
+  closeWindows();
+  app.quit();
+}
+
 function displaySignature() {
   return screen.getAllDisplays()
     .map(({ id, bounds, scaleFactor }) => `${id}:${bounds.x},${bounds.y},${bounds.width},${bounds.height}@${scaleFactor}`)
@@ -307,6 +364,7 @@ function rebuildTray() {
       }),
     },
     { type: "separator" },
+    { label: "바탕화면으로 사용하지 않기", click: stopUsingWallpaper },
     { label: "종료", click: () => { quitting = true; app.quit(); } },
   ]));
 }
@@ -324,18 +382,26 @@ function createTray() {
 app.whenReady().then(async () => {
   console.log("[reef-desktop] ready");
   if (process.platform === "darwin") app.dock?.hide();
+  if (process.argv.includes("--install-wallpaper")) {
+    app.setLoginItemSettings({
+      openAtLogin: true,
+      args: process.platform === "win32" ? ["--wallpaper"] : [],
+    });
+  }
   session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
   await startRendererServer();
   createTray();
   globalShortcut.register(EDIT_SHORTCUT, toggleMode);
   globalShortcut.register(PAUSE_SHORTCUT, () => setPaused(!paused));
   ipcMain.on("reef-desktop:set-mode", (_event, nextMode) => setMode(nextMode));
+  ipcMain.on("reef-desktop:stop-wallpaper", stopUsingWallpaper);
   ipcMain.on("reef-desktop:quit", () => { quitting = true; app.quit(); });
   // A normal Windows launch opens the visible editor. Login startup receives
   // --wallpaper and stays quietly behind the desktop icons.
   const requestedEditor = process.argv.includes("--editor");
   const requestedWallpaper = process.argv.includes("--wallpaper");
-  setMode(requestedEditor || (process.platform === "win32" && !requestedWallpaper) ? "editor" : "wallpaper");
+  const requestedInstall = process.argv.includes("--install-wallpaper");
+  setMode(requestedEditor || (process.platform === "win32" && !requestedWallpaper && !requestedInstall) ? "editor" : "wallpaper");
 
   screen.on("display-added", refreshWallpaperForDisplays);
   screen.on("display-removed", refreshWallpaperForDisplays);

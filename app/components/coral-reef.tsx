@@ -100,8 +100,8 @@ const ASSETS = Object.fromEntries(MANIFEST.map((asset) => [asset.id, asset])) as
 const STORAGE_KEY = "photo-reef:v1";
 const CCD_STORAGE_KEY = "photo-reef:ccd:v1";
 const DEFAULT_CCD_STRENGTH = 0.72;
-const WINDOWS_WALLPAPER_DOWNLOAD_URL = "https://github.com/1009pls666-spec/coral-reef-wallpaper-downloads/releases/download/v0.1.0/coral-reef-wallpaper-0.1.0-win-x64-portable.zip";
-const MAC_WALLPAPER_DOWNLOAD_URL = "https://github.com/1009pls666-spec/coral-reef-wallpaper-downloads/releases/download/v0.1.0/coral-reef-wallpaper-0.1.0-mac-arm64-v2.dmg";
+const WALLPAPER_RELEASE_URL = "https://github.com/1009pls666-spec/coral-reef-wallpaper-downloads/releases/download/v0.1.0";
+const WINDOWS_WALLPAPER_DOWNLOAD_URL = `${WALLPAPER_RELEASE_URL}/CoralReefWallpaper-Windows.exe`;
 const AMBIENT_WHALE_ID = "humpbackWhale-default-ambient";
 // Keep individual saved sizes intact while making every foreground animal
 // read clearly on first load. This also upgrades existing saved reefs because
@@ -426,6 +426,10 @@ function createMaterial(texture: THREE.Texture, asset: ReefAsset, phase: number)
 export function CoralReef() {
   const startsAsDesktopWallpaper = typeof window !== "undefined"
     && new URLSearchParams(window.location.search).get("mode") === "wallpaper";
+  const desktopPlatform = typeof window !== "undefined"
+    ? (window as Window & { reefDesktop?: { platform?: string } }).reefDesktop?.platform
+    : undefined;
+  const isWindowsWallpaper = desktopPlatform === "win32" && startsAsDesktopWallpaper;
   const [objects, setObjects] = useState<ReefObject[]>(() => defaultReef());
   const [editMode, setEditMode] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -453,6 +457,7 @@ export function CoralReef() {
   const [historyTick, setHistoryTick] = useState(0);
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [installedApp, setInstalledApp] = useState(false);
+  const [webglFallback, setWebglFallback] = useState(false);
 
   const rootRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -613,11 +618,11 @@ export function CoralReef() {
     const engine = engineRef.current;
     if (!engine) return;
     const lowPower = (navigator.hardwareConcurrency || 8) <= 4;
-    const ccdCap = lowPower ? 0.78 : 1.02 - ccdStrength * 0.22;
-    const clearCap = 2;
+    const ccdCap = isWindowsWallpaper ? 0.74 : lowPower ? 0.78 : 1.02 - ccdStrength * 0.22;
+    const clearCap = isWindowsWallpaper ? 0.9 : 2;
     engine.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, ccdActive ? ccdCap : clearCap));
     engine.renderer.setSize(engine.width, engine.height, false);
-  }, [ccdActive, ccdEnabled, ccdStrength, globalAnimalScale, globalAnimalPopulation, globalAnimalSpeed]);
+  }, [ccdActive, ccdEnabled, ccdStrength, globalAnimalScale, globalAnimalPopulation, globalAnimalSpeed, isWindowsWallpaper]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -629,7 +634,22 @@ export function CoralReef() {
     let last = performance.now();
     let elapsed = 0;
 
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance", preserveDrawingBuffer: true });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        alpha: true,
+        antialias: !isWindowsWallpaper,
+        powerPreference: isWindowsWallpaper ? "high-performance" : "default",
+        preserveDrawingBuffer: !isWindowsWallpaper,
+      });
+      setWebglFallback(false);
+    } catch (error) {
+      console.error("[reef] WebGL initialization failed; showing the static reef fallback.", error);
+      setWebglFallback(true);
+      notify("그래픽 가속을 사용할 수 없어 정적 바다로 표시해요");
+      return;
+    }
     renderer.setClearColor(0x000000, 0);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     const scene = new THREE.Scene();
@@ -738,8 +758,8 @@ export function CoralReef() {
       engine.height = Math.max(1, rect.height);
       const lowPower = (navigator.hardwareConcurrency || 8) <= 4;
       const currentStrength = ccdStrengthRef.current;
-      const ccdCap = lowPower ? 0.78 : 1.02 - currentStrength * 0.22;
-      const clearCap = 2;
+      const ccdCap = isWindowsWallpaper ? 0.74 : lowPower ? 0.78 : 1.02 - currentStrength * 0.22;
+      const clearCap = isWindowsWallpaper ? 0.9 : 2;
       const currentCcdActive = ccdEnabledRef.current && currentStrength > 0.001;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, currentCcdActive ? ccdCap : clearCap));
       renderer.setSize(engine.width, engine.height, false);
@@ -1236,7 +1256,15 @@ export function CoralReef() {
       }
 
       for (const [id, runtime] of runtimes) if (!byId.has(id)) runtime.mesh.visible = false;
-      renderer.render(scene, camera);
+      try {
+        renderer.render(scene, camera);
+      } catch (error) {
+        console.error("[reef] WebGL rendering failed; showing the static reef fallback.", error);
+        running = false;
+        setWebglFallback(true);
+        notify("그래픽 가속을 사용할 수 없어 정적 바다로 표시해요");
+        return;
+      }
       frame = requestAnimationFrame(tick);
     };
 
@@ -1259,7 +1287,7 @@ export function CoralReef() {
       animalGeometry.dispose(); plantGeometry.dispose(); renderer.dispose();
       engineRef.current = null;
     };
-  }, [notify]);
+  }, [isWindowsWallpaper, notify]);
 
   useEffect(() => { engineRef.current?.sync(sceneObjects); }, [sceneObjects]);
 
@@ -1666,7 +1694,7 @@ export function CoralReef() {
     : 1;
 
   return (
-    <main ref={rootRef} style={ccdStyle} className={`coral-reef${editMode ? " is-editing" : ""}${paused ? " is-paused" : ""}${uiHidden ? " is-ui-hidden" : ""}${ccdActive ? " is-ccd" : ""}`} onDragOver={(event) => event.preventDefault()} onDrop={onDrop}>
+    <main ref={rootRef} style={ccdStyle} className={`coral-reef${editMode ? " is-editing" : ""}${paused ? " is-paused" : ""}${uiHidden ? " is-ui-hidden" : ""}${ccdActive ? " is-ccd" : ""}${webglFallback ? " is-webgl-fallback" : ""}`} onDragOver={(event) => event.preventDefault()} onDrop={onDrop}>
       <svg className="reef-filter-defs" width="0" height="0" aria-hidden="true" focusable="false">
         <defs>
           <filter id="reef-ccd-filter" x="-2%" y="-2%" width="104%" height="104%" colorInterpolationFilters="sRGB">
@@ -1790,25 +1818,20 @@ export function CoralReef() {
 
         {desktopOpen && <aside className="reef-panel reef-desktop-download" data-reef-ui aria-label="바탕화면 앱 다운로드">
           <header><div><small>LIVE WALLPAPER</small><strong>움직이는 바탕화면</strong></div><button type="button" onClick={() => setDesktopOpen(false)} aria-label="바탕화면 다운로드 닫기"><Icon name="close" /></button></header>
-          <p>지금 보고 있는 산호초를 컴퓨터 바탕화면으로 설치하세요.</p>
+          <p>Windows 10·11용 최신 파일 하나만 제공해요.</p>
           <div className="reef-download-options">
-            <a href={WINDOWS_WALLPAPER_DOWNLOAD_URL} target="_blank" rel="noreferrer" aria-label="Windows용 산호초 바탕화면 다운로드">
+            <a href={WINDOWS_WALLPAPER_DOWNLOAD_URL} target="_blank" rel="noreferrer" aria-label="Windows 산호초 바탕화면 다운로드">
               <span className="reef-download-os"><Icon name="windows" /></span>
-              <span><b>Windows</b><small>Windows 10 · 11</small></span>
-              <span className="reef-download-arrow"><Icon name="download" /></span>
-            </a>
-            <a href={MAC_WALLPAPER_DOWNLOAD_URL} target="_blank" rel="noreferrer" aria-label="Mac용 산호초 바탕화면 다운로드">
-              <span className="reef-download-os"><Icon name="apple" /></span>
-              <span><b>Mac</b><small>Apple Silicon · 첫 실행 안내 확인</small></span>
+              <span><b>Windows 다운로드</b><small>10 · 11 x64</small></span>
               <span className="reef-download-arrow"><Icon name="download" /></span>
             </a>
           </div>
-          <div className="reef-mac-open-guide" aria-label="Mac 첫 실행 방법">
-            <strong>Mac에서 처음 열 때</strong>
+          <div className="reef-windows-install-guide" aria-label="Windows 실행 방법">
+            <strong>실행 방법</strong>
             <ol>
-              <li>경고창에서 <b>완료</b>를 눌러 닫기</li>
-              <li><b>응용 프로그램</b>에서 앱을 Control-클릭</li>
-              <li><b>열기</b>를 누른 뒤 한 번 더 <b>열기</b></li>
+              <li>받은 <b>EXE 파일</b> 더블클릭</li>
+              <li>Windows 경고가 뜨면 <b>추가 정보 → 실행</b></li>
+              <li>편집 후 <b>바탕화면으로 돌아가기</b> 누르기</li>
             </ol>
           </div>
           <div className="reef-download-shortcuts" aria-label="바탕화면 앱 단축키">
@@ -1816,7 +1839,7 @@ export function CoralReef() {
             <span><kbd>Ctrl / ⌘</kbd><b>+</b><kbd>Shift</kbd><b>+</b><kbd>E</kbd><small>편집 열기 · 바탕화면 복귀</small></span>
             <span><kbd>Ctrl / ⌘</kbd><b>+</b><kbd>Shift</kbd><b>+</b><kbd>Space</kbd><small>움직임 멈춤 · 재생</small></span>
           </div>
-          <small className="reef-download-note">받은 파일을 열면 바탕화면 앱으로 설치할 수 있어요.</small>
+          <small className="reef-download-note">설치 후 단축키로 바다 편집 화면을 언제든 다시 열 수 있어요.</small>
         </aside>}
 
         {settingsOpen && <aside className="reef-panel reef-camera-settings" data-reef-ui aria-label="카메라 화질 설정">

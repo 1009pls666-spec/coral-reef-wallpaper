@@ -17,7 +17,7 @@
 
 * { box-sizing: border-box; }
 html { min-width: 320px; background: var(--navy); }
-body { margin: 0; color: var(--ink); background: var(--navy); font-family: var(--sans); font-size: 16px; }
+body { min-height: 100vh; margin: 0; color: var(--ink); background: #006d96 url("/reef/assets/bg/reef-desktop.png") center / cover fixed no-repeat; font-family: var(--sans); font-size: 16px; }
 button { color: inherit; font: inherit; }
 button:focus-visible { outline: 3px solid var(--coral); outline-offset: 3px; }
 button:disabled { cursor: not-allowed; opacity: .42; }

@@ -45,6 +45,12 @@ html[data-desktop="wallpaper"] .reef-toast { display: none !important; }
 }
 
 .desktop-wallpaper-controls button:hover { background: rgba(105, 217, 227, .28); }
+.desktop-wallpaper-actions { display: flex; align-items: center; gap: 5px; }
+.desktop-wallpaper-controls .stop-wallpaper {
+  color: rgba(255, 239, 235, .94);
+  background: rgba(185, 92, 74, .18);
+}
+.desktop-wallpaper-controls .stop-wallpaper:hover { background: rgba(201, 104, 84, .3); }
 .desktop-shortcut-rows { display: grid; gap: 3px; padding-right: 6px; }
 .desktop-shortcut-rows span { display: grid; grid-template-columns: auto auto auto auto auto 1fr; align-items: center; gap: 3px; font-size: 8px; white-space: nowrap; }
 .desktop-shortcut-rows kbd { padding: 2px 5px; border: 1px solid rgba(224, 250, 253, .18); border-radius: 5px; background: rgba(255, 255, 255, .055); font: inherit; }
@@ -75,4 +81,10 @@ html[data-desktop="wallpaper"] .reef-toast { display: none !important; }
   0% { opacity: 0; transform: translateY(-7px); }
   7%, 78% { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; transform: translateY(-4px); }
+}
+
+@media (max-width: 720px) {
+  .desktop-wallpaper-controls { align-items: flex-start; border-radius: 17px; }
+  .desktop-wallpaper-actions { align-items: stretch; flex-direction: column; }
+  .desktop-shortcut-rows { display: none; }
 }
