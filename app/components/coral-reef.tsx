@@ -108,7 +108,6 @@ const REEF_MOBILE_BACKGROUND_URL = publicUrl("/reef/assets/bg/reef-mobile.png");
 const STORAGE_KEY = "photo-reef:v1";
 const CCD_STORAGE_KEY = "photo-reef:ccd:v1";
 const DEFAULT_CCD_STRENGTH = 0.72;
-const WINDOWS_WALLPAPER_STORE_URL = "https://apps.microsoft.com/detail/9NH62B77CT1Z";
 const AMBIENT_WHALE_ID = "humpbackWhale-default-ambient";
 // Keep individual saved sizes intact while making every foreground animal
 // read clearly on first load. This also upgrades existing saved reefs because
@@ -1825,18 +1824,18 @@ export function CoralReef() {
 
         {desktopOpen && <aside className="reef-panel reef-desktop-download" data-reef-ui aria-label="바탕화면 앱 다운로드">
           <header><div><small>LIVE WALLPAPER</small><strong>움직이는 바탕화면</strong></div><button type="button" onClick={() => setDesktopOpen(false)} aria-label="바탕화면 다운로드 닫기"><Icon name="close" /></button></header>
-          <p>Microsoft Store에서 안전하게 설치하고 업데이트할 수 있어요.</p>
+          <p>Windows 앱은 현재 Microsoft Store 출시 심사 중이에요.</p>
           <div className="reef-download-options">
-            <a href={WINDOWS_WALLPAPER_STORE_URL} target="_blank" rel="noreferrer" aria-label="Microsoft Store에서 Windows 산호초 바탕화면 받기">
+            <button type="button" disabled aria-label="Windows 산호초 바탕화면 출시 준비 중">
               <span className="reef-download-os"><Icon name="windows" /></span>
-              <span><b>Microsoft Store에서 받기</b><small>Windows 10 · 11</small></span>
+              <span><b>출시 준비 중</b><small>Microsoft Store 심사 중</small></span>
               <span className="reef-download-arrow"><Icon name="download" /></span>
-            </a>
+            </button>
           </div>
-          <div className="reef-windows-install-guide" aria-label="Windows 실행 방법">
-            <strong>설치 방법</strong>
+          <div className="reef-windows-install-guide" aria-label="Windows 출시 안내">
+            <strong>출시 후 이용 방법</strong>
             <ol>
-              <li>버튼을 눌러 <b>Microsoft Store</b> 열기</li>
+              <li>이 버튼에서 <b>Microsoft Store</b> 열기</li>
               <li><b>다운로드</b> 또는 <b>설치</b> 누르기</li>
               <li>앱을 열어 편집 후 <b>바탕화면으로 돌아가기</b> 누르기</li>
             </ol>
@@ -1846,7 +1845,7 @@ export function CoralReef() {
             <span><kbd>Ctrl / ⌘</kbd><b>+</b><kbd>Shift</kbd><b>+</b><kbd>E</kbd><small>편집 열기 · 바탕화면 복귀</small></span>
             <span><kbd>Ctrl / ⌘</kbd><b>+</b><kbd>Shift</kbd><b>+</b><kbd>Space</kbd><small>움직임 멈춤 · 재생</small></span>
           </div>
-          <small className="reef-download-note">설치 후 단축키로 바다 편집 화면을 언제든 다시 열 수 있어요.</small>
+          <small className="reef-download-note">Store 출시가 완료되면 다운로드 버튼이 열려요.</small>
         </aside>}
 
         {settingsOpen && <aside className="reef-panel reef-camera-settings" data-reef-ui aria-label="카메라 화질 설정">

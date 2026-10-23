@@ -129,11 +129,12 @@ html[data-platform="win32"][data-desktop="wallpaper"] .reef-ccd-overlay .ccd-noi
 .reef-desktop-download { top: calc(max(14px, env(safe-area-inset-top)) + 50px); right: max(14px, env(safe-area-inset-right)); width: min(350px, calc(100vw - 28px)); max-height: calc(100svh - 76px); padding: 13px; overflow: auto; border-radius: 17px; }
 .reef-desktop-download > p { margin: 12px 1px 11px; color: rgba(211,240,245,.72); font-size: 10px; line-height: 1.5; }
 .reef-download-options { display: grid; grid-template-columns: 1fr; gap: 6px; }
-.reef-download-options a { min-width: 0; min-height: 62px; padding: 10px 11px; display: grid; grid-template-columns: 36px 1fr 19px; align-items: center; gap: 9px; border: 1px solid rgba(163,238,246,.28); border-radius: 13px; color: #f0fcff; background: rgba(100,215,228,.12); text-decoration: none; transition: transform .18s, border-color .18s, background .18s; }
+.reef-download-options a, .reef-download-options button { min-width: 0; min-height: 62px; padding: 10px 11px; display: grid; grid-template-columns: 36px 1fr 19px; align-items: center; gap: 9px; border: 1px solid rgba(163,238,246,.28); border-radius: 13px; color: #f0fcff; background: rgba(100,215,228,.12); text-decoration: none; text-align: left; transition: transform .18s, border-color .18s, background .18s; }
 .reef-download-options a:hover, .reef-download-options a:focus-visible { border-color: rgba(151,235,244,.46); background: rgba(109,218,229,.14); transform: translateY(-1px); outline: none; }
+.reef-download-options button:disabled { color: rgba(225,245,249,.58); border-color: rgba(185,226,232,.13); background: rgba(119,166,174,.08); cursor: not-allowed; opacity: 1; }
 .reef-download-os { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 9px; color: #dffbff; background: rgba(208,248,252,.1); }
 .reef-download-os .reef-icon { width: 18px; height: 18px; }
-.reef-download-options a > span:nth-child(2) { display: grid; gap: 3px; }
+.reef-download-options a > span:nth-child(2), .reef-download-options button > span:nth-child(2) { display: grid; gap: 3px; }
 .reef-download-options b { overflow: hidden; font-size: 10px; letter-spacing: -.02em; text-overflow: ellipsis; }
 .reef-download-options small { color: rgba(168,221,230,.68); font-size: 7px; line-height: 1.2; }
 .reef-download-arrow { color: rgba(205,244,249,.65); }
