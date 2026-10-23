@@ -50,6 +50,14 @@ npm run desktop:dist:win
 
 결과물은 `release-wallpaper/`에 생성됩니다. Windows 설치 파일도 공개 배포 시 코드 서명을 권장합니다.
 
+Microsoft Store APPX:
+
+```bash
+npm run desktop:dist:store
+```
+
+실제 Store 제출용 패키지는 Partner Center의 Identity/Publisher 값을 넣어 생성해야 합니다. 자세한 절차는 [`STORE-PUBLISHING.md`](./STORE-PUBLISHING.md)에 정리해 두었습니다.
+
 ## 직접 설치용과 AI 설치용 ZIP
 
 최신 Mac/Windows 앱 폴더를 만든 뒤 다음 명령으로 네 가지 ZIP을 생성합니다.

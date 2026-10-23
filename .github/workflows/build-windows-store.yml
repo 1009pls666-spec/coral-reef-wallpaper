@@ -1,0 +1,64 @@
+name: Build Microsoft Store Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      identity_name:
+        description: "Partner Center Package/Identity/Name"
+        required: false
+        type: string
+      publisher:
+        description: "Partner Center Package/Identity/Publisher (CN=...)"
+        required: false
+        type: string
+      publisher_display_name:
+        description: "Partner Center publisher display name"
+        required: false
+        type: string
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/build-windows-store.yml
+      - app/**
+      - desktop/**
+      - public/**
+      - package.json
+      - package-lock.json
+
+permissions:
+  contents: read
+
+jobs:
+  build-store-package:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      WINDOWS_STORE_IDENTITY_NAME: ${{ inputs.identity_name || vars.WINDOWS_STORE_IDENTITY_NAME || 'CoralReefWallpaperPreview' }}
+      WINDOWS_STORE_PUBLISHER: ${{ inputs.publisher || vars.WINDOWS_STORE_PUBLISHER || 'CN=ms' }}
+      WINDOWS_STORE_PUBLISHER_DISPLAY_NAME: ${{ inputs.publisher_display_name || vars.WINDOWS_STORE_PUBLISHER_DISPLAY_NAME || 'Soobin Park' }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Match locked dependency version
+        shell: pwsh
+        run: |
+          $package = Get-Content package.json -Raw
+          $package = $package.Replace('"eslint-plugin-react-hooks": "7.37.5"', '"eslint-plugin-react-hooks": "7.1.1"')
+          Set-Content package.json $package
+      - name: Install dependencies
+        run: npm ci
+      - name: Build Microsoft Store APPX
+        run: npm run desktop:dist:store
+      - name: Upload Store package
+        uses: actions/upload-artifact@v4
+        with:
+          name: coral-reef-wallpaper-microsoft-store
+          path: release-wallpaper/coral-reef-wallpaper-store-0.1.0-x64.appx
+          if-no-files-found: error
+          retention-days: 14

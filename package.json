@@ -16,6 +16,7 @@
     "desktop:dist:mac": "npm run desktop:build && electron-builder --config desktop/electron-builder.json --mac",
     "desktop:dist:mac:notarized": "node desktop/build-notarized.mjs",
     "desktop:dist:win": "npm run desktop:build && electron-builder --config desktop/electron-builder.json --win --x64",
+    "desktop:dist:store": "npm run desktop:build && electron-builder --config desktop/electron-builder.store.cjs --win appx --x64 --publish never",
     "desktop:dist:win:unpacked": "npm run desktop:build && electron-builder --config desktop/electron-builder.json --win --x64 --dir",
     "desktop:install-bundles": "node desktop/create-install-bundles.mjs",
     "test:auth": "vitest run",
