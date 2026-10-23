@@ -7,6 +7,11 @@ on:
       - main
     paths:
       - .github/workflows/build-windows-portable.yml
+      - app/**
+      - desktop/**
+      - public/**
+      - package.json
+      - package-lock.json
 
 permissions:
   contents: write
