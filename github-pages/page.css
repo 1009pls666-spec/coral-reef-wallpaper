@@ -1,0 +1,17 @@
+:root {
+  color-scheme: dark;
+  background: #006d96;
+  font-family: "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+}
+
+html,
+body,
+#reef-root {
+  width: 100%;
+  min-width: 320px;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #006d96;
+}

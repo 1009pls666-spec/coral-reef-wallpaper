@@ -1,11 +1,13 @@
-const CACHE_NAME = "coral-reef-mobile-v15";
+const CACHE_NAME = "coral-reef-mobile-v18";
+const APP_ROOT = new URL("./", self.location.href).pathname;
+const appPath = (path) => new URL(path.replace(/^\//, ""), self.location.href).pathname;
 const APP_SHELL = [
-  "/",
-  "/manifest.webmanifest",
-  "/reef-icon-192.png",
-  "/reef-icon-512.png",
-  "/reef/assets/bg/reef-mobile.png",
-  "/reef/assets/manifest.json"
+  APP_ROOT,
+  appPath("manifest.webmanifest"),
+  appPath("reef-icon-192.png"),
+  appPath("reef-icon-512.png"),
+  appPath("reef/assets/bg/reef-mobile.png"),
+  appPath("reef/assets/manifest.json")
 ];
 
 self.addEventListener("install", (event) => {
@@ -31,10 +33,10 @@ self.addEventListener("fetch", (event) => {
       fetch(event.request)
         .then((response) => {
           const copy = response.clone();
-          void caches.open(CACHE_NAME).then((cache) => cache.put("/", copy));
+          void caches.open(CACHE_NAME).then((cache) => cache.put(APP_ROOT, copy));
           return response;
         })
-        .catch(() => caches.match("/"))
+        .catch(() => caches.match(APP_ROOT))
     );
     return;
   }

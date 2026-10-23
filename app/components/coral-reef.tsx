@@ -95,13 +95,20 @@ type ReefEngine = {
   sync: (objects: ReefObject[]) => void;
 };
 
-const MANIFEST = manifestJson.assets as ReefAsset[];
+const PUBLIC_BASE = (import.meta.env.BASE_URL || "/").replace(/\/$/, "");
+const publicUrl = (path: string) => `${PUBLIC_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+const MANIFEST = (manifestJson.assets as ReefAsset[]).map((asset) => ({
+  ...asset,
+  file: publicUrl(asset.file),
+  mask: publicUrl(asset.mask),
+}));
 const ASSETS = Object.fromEntries(MANIFEST.map((asset) => [asset.id, asset])) as Record<string, ReefAsset>;
+const REEF_DESKTOP_BACKGROUND_URL = publicUrl("/reef/assets/bg/reef-desktop.png");
+const REEF_MOBILE_BACKGROUND_URL = publicUrl("/reef/assets/bg/reef-mobile.png");
 const STORAGE_KEY = "photo-reef:v1";
 const CCD_STORAGE_KEY = "photo-reef:ccd:v1";
 const DEFAULT_CCD_STRENGTH = 0.72;
-const WALLPAPER_RELEASE_URL = "https://github.com/1009pls666-spec/coral-reef-wallpaper-downloads/releases/download/v0.1.0";
-const WINDOWS_WALLPAPER_DOWNLOAD_URL = `${WALLPAPER_RELEASE_URL}/CoralReefWallpaper-Windows.exe`;
+const WINDOWS_WALLPAPER_STORE_URL = "https://apps.microsoft.com/detail/9NH62B77CT1Z";
 const AMBIENT_WHALE_ID = "humpbackWhale-default-ambient";
 // Keep individual saved sizes intact while making every foreground animal
 // read clearly on first load. This also upgrades existing saved reefs because
@@ -504,7 +511,7 @@ export function CoralReef() {
 
   useEffect(() => {
     if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
-      void navigator.serviceWorker.register("/sw.js");
+      void navigator.serviceWorker.register(publicUrl("/sw.js"));
     }
     const standalone = window.matchMedia("(display-mode: standalone)").matches
       || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
@@ -1590,7 +1597,7 @@ export function CoralReef() {
       const height = Math.round(engine.height * Math.min(window.devicePixelRatio || 1, 1.5));
       const raw = document.createElement("canvas"); raw.width = width; raw.height = height;
       const rawContext = raw.getContext("2d", { willReadFrequently: true }); if (!rawContext) throw new Error("canvas");
-      const src = engine.width / engine.height > 0.82 ? "/reef/assets/bg/reef-desktop.png" : "/reef/assets/bg/reef-mobile.png";
+      const src = engine.width / engine.height > 0.82 ? REEF_DESKTOP_BACKGROUND_URL : REEF_MOBILE_BACKGROUND_URL;
       const image = new Image(); image.src = src; await image.decode();
       const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
       const dw = image.naturalWidth * scale; const dh = image.naturalHeight * scale;
@@ -1709,8 +1716,8 @@ export function CoralReef() {
       </svg>
       <div className="reef-scene-stage">
       <picture className="reef-background" aria-hidden="true">
-        <source media="(max-aspect-ratio: 4/5)" srcSet="/reef/assets/bg/reef-mobile.png" />
-        <img src="/reef/assets/bg/reef-desktop.png" alt="" />
+        <source media="(max-aspect-ratio: 4/5)" srcSet={REEF_MOBILE_BACKGROUND_URL} />
+        <img src={REEF_DESKTOP_BACKGROUND_URL} alt="" />
       </picture>
       <div className="reef-caustics" aria-hidden="true"><i /><i /><i /></div>
       <div className="reef-plankton" aria-hidden="true">{Array.from({ length: 18 }, (_, index) => <i key={index} style={{ "--i": index } as CSSProperties} />)}</div>
@@ -1818,20 +1825,20 @@ export function CoralReef() {
 
         {desktopOpen && <aside className="reef-panel reef-desktop-download" data-reef-ui aria-label="바탕화면 앱 다운로드">
           <header><div><small>LIVE WALLPAPER</small><strong>움직이는 바탕화면</strong></div><button type="button" onClick={() => setDesktopOpen(false)} aria-label="바탕화면 다운로드 닫기"><Icon name="close" /></button></header>
-          <p>Windows 10·11용 최신 파일 하나만 제공해요.</p>
+          <p>Microsoft Store에서 안전하게 설치하고 업데이트할 수 있어요.</p>
           <div className="reef-download-options">
-            <a href={WINDOWS_WALLPAPER_DOWNLOAD_URL} target="_blank" rel="noreferrer" aria-label="Windows 산호초 바탕화면 다운로드">
+            <a href={WINDOWS_WALLPAPER_STORE_URL} target="_blank" rel="noreferrer" aria-label="Microsoft Store에서 Windows 산호초 바탕화면 받기">
               <span className="reef-download-os"><Icon name="windows" /></span>
-              <span><b>Windows 다운로드</b><small>10 · 11 x64</small></span>
+              <span><b>Microsoft Store에서 받기</b><small>Windows 10 · 11</small></span>
               <span className="reef-download-arrow"><Icon name="download" /></span>
             </a>
           </div>
           <div className="reef-windows-install-guide" aria-label="Windows 실행 방법">
-            <strong>실행 방법</strong>
+            <strong>설치 방법</strong>
             <ol>
-              <li>받은 <b>EXE 파일</b> 더블클릭</li>
-              <li>Windows 경고가 뜨면 <b>추가 정보 → 실행</b></li>
-              <li>편집 후 <b>바탕화면으로 돌아가기</b> 누르기</li>
+              <li>버튼을 눌러 <b>Microsoft Store</b> 열기</li>
+              <li><b>다운로드</b> 또는 <b>설치</b> 누르기</li>
+              <li>앱을 열어 편집 후 <b>바탕화면으로 돌아가기</b> 누르기</li>
             </ol>
           </div>
           <div className="reef-download-shortcuts" aria-label="바탕화면 앱 단축키">

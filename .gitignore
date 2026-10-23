@@ -4,6 +4,7 @@ dist/
 .wrangler/
 .vinext/
 dist-wallpaper/
+dist-pages/
 release-wallpaper/
 .android-toolchain/
 android-live-wallpaper/.gradle/
