@@ -35,3 +35,5 @@ npm run desktop:dist:store
 4. 사용자는 Store에서 신뢰된 설치·삭제·자동 업데이트를 사용하게 된다.
 
 Store 상품이 승인되기 전에는 기존 GitHub EXE 다운로드 링크를 제거하지 않는다. 승인 후에 웹 버튼을 Store 링크로 교체한다.
+
+첫 출시는 Store에서 숨긴 상태로 심사를 통과한 뒤, 일회용 프로모션 코드 20개로만 무료 배포한다. 자세한 설정은 [`STORE-LAUNCH-PLAN.md`](./STORE-LAUNCH-PLAN.md)를 따른다.

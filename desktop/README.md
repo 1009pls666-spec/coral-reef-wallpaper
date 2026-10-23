@@ -58,6 +58,8 @@ npm run desktop:dist:store
 
 실제 Store 제출용 패키지는 Partner Center의 Identity/Publisher 값을 넣어 생성해야 합니다. 자세한 절차는 [`STORE-PUBLISHING.md`](./STORE-PUBLISHING.md)에 정리해 두었습니다.
 
+초기 배포는 [`STORE-LAUNCH-PLAN.md`](./STORE-LAUNCH-PLAN.md)의 계획대로 Store에서 숨긴 상태로 심사를 통과한 뒤 20개의 일회용 프로모션 코드로 진행합니다.
+
 ## 직접 설치용과 AI 설치용 ZIP
 
 최신 Mac/Windows 앱 폴더를 만든 뒤 다음 명령으로 네 가지 ZIP을 생성합니다.
