@@ -1,7 +1,7 @@
 const base = require("./electron-builder.json");
 
-const identityName = process.env.WINDOWS_STORE_IDENTITY_NAME || "CoralReefWallpaperPreview";
-const publisher = process.env.WINDOWS_STORE_PUBLISHER || "CN=ms";
+const identityName = process.env.WINDOWS_STORE_IDENTITY_NAME || "SoobinPark.51940BE59EFE";
+const publisher = process.env.WINDOWS_STORE_PUBLISHER || "CN=0158E73A-5279-4088-9144-C353B1F3024F";
 const publisherDisplayName = process.env.WINDOWS_STORE_PUBLISHER_DISPLAY_NAME || "Soobin Park";
 
 module.exports = {

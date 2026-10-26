@@ -34,8 +34,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     env:
-      WINDOWS_STORE_IDENTITY_NAME: ${{ inputs.identity_name || vars.WINDOWS_STORE_IDENTITY_NAME || 'CoralReefWallpaperPreview' }}
-      WINDOWS_STORE_PUBLISHER: ${{ inputs.publisher || vars.WINDOWS_STORE_PUBLISHER || 'CN=ms' }}
+      WINDOWS_STORE_IDENTITY_NAME: ${{ inputs.identity_name || vars.WINDOWS_STORE_IDENTITY_NAME || 'SoobinPark.51940BE59EFE' }}
+      WINDOWS_STORE_PUBLISHER: ${{ inputs.publisher || vars.WINDOWS_STORE_PUBLISHER || 'CN=0158E73A-5279-4088-9144-C353B1F3024F' }}
       WINDOWS_STORE_PUBLISHER_DISPLAY_NAME: ${{ inputs.publisher_display_name || vars.WINDOWS_STORE_PUBLISHER_DISPLAY_NAME || 'Soobin Park' }}
     steps:
       - name: Check out source
