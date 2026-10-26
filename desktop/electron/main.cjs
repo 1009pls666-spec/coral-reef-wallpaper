@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, screen, session } = require("electron");
 const { createServer } = require("node:http");
+const { existsSync } = require("node:fs");
 const { readFile, stat } = require("node:fs/promises");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
@@ -28,6 +29,7 @@ let tray;
 let windows = [];
 let quitting = false;
 let lastDisplaySignature = "";
+let recoveringToEditor = false;
 
 console.log(`[reef-desktop] boot ${app.isPackaged ? "packaged" : "development"}`);
 
@@ -82,7 +84,36 @@ function nativeHandle(window) {
   return buffer.length >= 8 ? Number(buffer.readBigUInt64LE()) : buffer.readUInt32LE();
 }
 
-function attachToWindowsDesktop(window, bounds) {
+function windowsWallpaperHelperPath() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "reef-wallpaper-host.exe")
+    : path.resolve(__dirname, "..", "build", "reef-wallpaper-host.exe");
+}
+
+function attachWithWindowsHelper(window, bounds) {
+  const helper = windowsWallpaperHelperPath();
+  if (!existsSync(helper)) return null;
+  const hwnd = nativeHandle(window);
+  const result = spawnSync(helper, [
+    String(hwnd),
+    String(bounds.x),
+    String(bounds.y),
+    String(bounds.width),
+    String(bounds.height),
+  ], {
+    windowsHide: true,
+    encoding: "utf8",
+    timeout: 8000,
+  });
+  if (result.status !== 0) {
+    console.error(`[reef-desktop] native wallpaper host failed (${result.status}): ${result.stderr || result.stdout || result.error?.message || "unknown error"}`);
+  } else {
+    console.log(`[reef-desktop] ${String(result.stdout || "native wallpaper host attached").trim()}`);
+  }
+  return result.status === 0;
+}
+
+function attachWithPowerShellFallback(window, bounds) {
   const hwnd = nativeHandle(window);
   const script = String.raw`
 using System;
@@ -109,6 +140,8 @@ $child = [IntPtr]${hwnd}
 $progman = [ReefWallpaperNative]::FindWindow("Progman", $null)
 if ($progman -eq [IntPtr]::Zero) { exit 11 }
 $unused = [IntPtr]::Zero
+[void][ReefWallpaperNative]::SendMessageTimeout($progman, 0x052C, [IntPtr]0xD, [IntPtr]0x1, 0, 1000, [ref]$unused)
+[void][ReefWallpaperNative]::SendMessageTimeout($progman, 0x052C, [IntPtr]0xD, [IntPtr]::Zero, 0, 1000, [ref]$unused)
 [void][ReefWallpaperNative]::SendMessageTimeout($progman, 0x052C, [IntPtr]::Zero, [IntPtr]::Zero, 0, 1000, [ref]$unused)
 $worker = [IntPtr]::Zero
 $desktopHost = [IntPtr]::Zero
@@ -148,6 +181,13 @@ exit 0
   return result.status === 0;
 }
 
+function attachToWindowsDesktop(window, bounds) {
+  const helperResult = attachWithWindowsHelper(window, bounds);
+  if (helperResult !== null) return helperResult;
+  console.warn("[reef-desktop] native wallpaper host is missing; using the development fallback");
+  return attachWithPowerShellFallback(window, bounds);
+}
+
 function attachWindowsWallpaperWithRetry(window, bounds, attempt = 0) {
   if (window.isDestroyed() || mode !== "wallpaper") return;
   window.setBounds(bounds, false);
@@ -156,7 +196,7 @@ function attachWindowsWallpaperWithRetry(window, bounds, attempt = 0) {
     console.log(`[reef-desktop] Windows desktop attached on attempt ${attempt + 1}`);
     return;
   }
-  const delays = [320, 760, 1500];
+  const delays = [300, 800, 1800, 4000];
   if (attempt < delays.length) {
     setTimeout(() => attachWindowsWallpaperWithRetry(window, bounds, attempt + 1), delays[attempt]);
     return;
@@ -166,8 +206,15 @@ function attachWindowsWallpaperWithRetry(window, bounds, attempt = 0) {
   if (tray && typeof tray.displayBalloon === "function") {
     tray.displayBalloon({
       title: APP_NAME,
-      content: "바탕화면 뒤쪽에 연결하지 못해 화면을 숨겼어요. 트레이 아이콘에서 편집기를 열어 다시 시도해 주세요.",
+      content: "바탕화면 연결을 다시 준비할 수 있도록 편집 화면으로 돌아갑니다.",
     });
+  }
+  if (!recoveringToEditor) {
+    recoveringToEditor = true;
+    setTimeout(() => {
+      recoveringToEditor = false;
+      if (!quitting && mode === "wallpaper") setMode("editor");
+    }, 250);
   }
 }
 

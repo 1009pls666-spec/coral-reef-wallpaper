@@ -59,6 +59,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coral-reef-wallpaper-microsoft-store
-          path: release-wallpaper/coral-reef-wallpaper-store-0.1.0-x64.appx
+          path: release-wallpaper/coral-reef-wallpaper-store-*-x64.appx
           if-no-files-found: error
           retention-days: 14
